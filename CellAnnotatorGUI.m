@@ -272,7 +272,7 @@ if handles.ImageSequence.ImageDataLoaded(handles.CurrentImageIndex)==0
 end
 
 set(get(handles.axes1,'Children'),'CData',handles.ImageSequence.ImageData{handles.CurrentImageIndex});
-
+guidata(hObject, handles);
 
 
 
@@ -387,19 +387,82 @@ elseif strcmp(Button,'alt')
     
     RightClickMenu = uicontextmenu;
     
-%     hcb1=['disp(''Add new track'')'];
     item1=uimenu(RightClickMenu,'Label','Add new track','Callback',@AddNewTrack);
     set(get(gca,'children'),'uicontextmenu',RightClickMenu)
-    
-%     ImageHandle=get(handles.axes1,'Children');    
-%     set(handles.figure1,'UIContextMenu',hcmenu );
-%     m1 = uimenu(handles.figure1,'Label','Add new track','Callback',@AddNewTrack);
-%     m1 = uimenu(handles.axes1,'Label','Add new track');
     
 end
 
 function AddNewTrack(source,callbackdata)
-disp('Add track callback');
+% disp('Add track callback');
+handles=guidata(gcf);
+[x,y,c]=ginput(1);
+% do nothing if left mouse button was not clicked
+if c~=1
+    return;
+end
+
+if isfield(handles,'param')==0
+    handles.param.tracks(1)=1;
+    handles.CurrentlySelectedCell=1;
+end
+
+x=round(x)
+y=round(y)
+s=200;
+
+TopLeft=[x-floor(s/2) y-floor(s/2)]
+BottomRight=TopLeft+s-1
+
+handles.CurrentImageIndex
+
+CutImg=handles.ImageSequence.ImageData{handles.CurrentImageIndex}(TopLeft(2):BottomRight(2),TopLeft(1):BottomRight(1));
+CutImg2=handles.ImageSequence.ImageData{handles.CurrentImageIndex+1}(TopLeft(2):BottomRight(2),TopLeft(1):BottomRight(1));
+
+figure(1)
+clf
+imagesc(CutImg)
+colormap('gray')
+axis equal
+
+figure(2)
+clf
+imagesc(CutImg2)
+colormap('gray')
+axis equal
+
+[~,~,u_filtered1,v_filtered1]=antti_PIVlab_vel_field1(CutImg,CutImg2,[]);
+
+mean(u_filtered1(:));
+v_filtered1=mean(v_filtered1(:));
+
+
+
+imwrite(uint8(CutImg),'temp.tif');
+antti_evaluate_imagej_script_windows([pwd filesep 'bandpass_filter_z-stack.ijm'],[pwd filesep 'filt_temp.tif']);
+for i_ind=1:size(handles.o_imgs,3)
+    handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
+end
+delete temp.tif filt_temp.tif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     
