@@ -68,6 +68,7 @@ switch choice1
         end       
 end
 
+
 if load_from_file==0
     
 % % %% 186 
@@ -99,9 +100,11 @@ if load_from_file==0
             break
         end
     end
-    load([pathname filename],'timeStructureX','timeStructureY');
+    load([pathname filename],'TimeStructureX','TimeStructureY');
     
-% find first image in image sequence    
+    handles.time_interval=[1 length(TimeStructureX)];
+    
+% find image sequence    
     while 1
         [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
         if filename~=0
@@ -113,33 +116,18 @@ if load_from_file==0
     
     first_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));
     image_path=[pathname name(1:underscore_inds(end))];
-    
-% find last image in image sequence    
-    while 1
-        [filename, ~, ~]=uigetfile('*.tif','Point last image from grid sequence');
-        if filename~=0
-            break
-        end
-    end        
-    [~,name,~] = fileparts(filename);
-    underscore_inds=strfind(name,'_');
-    
-    last_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));    
-    
-    handles.time_interval=[first_ind_in_img_seq last_ind_in_img_seq];
 
 % show first image and the grid
 
     figure(2)
     clf
-    img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
-	imagesc(img_in);
+	imagesc(imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']));
     colormap('gray')
     hold on
-    line(timeStructureX{handles.time_interval(1)}',timeStructureY{handles.time_interval(1)}')
+    line(TimeStructureX{1}',TimeStructureY{1}')
     [x, y]=ginput(1);
     
-    [~,time_struct_id]=min((mean(timeStructureX{handles.time_interval(1)},2)-x).^2+(mean(timeStructureY{handles.time_interval(1)},2)-y).^2);
+    [~,time_struct_id]=min((mean(TimeStructureX{1},2)-x).^2+(mean(TimeStructureY{1},2)-y).^2);
     
     close(2)
 
@@ -148,10 +136,10 @@ if load_from_file==0
     
 %%
 
-%     keyboard
+    keyboard
 
     for time=handles.time_interval(1):handles.time_interval(2)
-        handles.min_max_mean(time-handles.time_interval(1)+1,1:6)=[min(timeStructureX{time}(time_struct_id,:)) max(timeStructureX{time}(time_struct_id,:)) min(timeStructureY{time}(time_struct_id,:)) max(timeStructureY{time}(time_struct_id,:)) mean(timeStructureX{time}(time_struct_id,:)) mean(timeStructureY{time}(time_struct_id,:))];
+        handles.min_max_mean(time-handles.time_interval(1)+1,1:6)=[min(TimeStructureX{time}(time_struct_id,:)) max(TimeStructureX{time}(time_struct_id,:)) min(TimeStructureY{time}(time_struct_id,:)) max(TimeStructureY{time}(time_struct_id,:)) mean(TimeStructureX{time}(time_struct_id,:)) mean(TimeStructureY{time}(time_struct_id,:))];
     end
 
     handles.max_x_span=ceil((ceil(max(handles.min_max_mean(:,2)-handles.min_max_mean(:,1))+boundary*2)/2))*2;
@@ -160,34 +148,14 @@ if load_from_file==0
     handles.o_imgs=zeros([handles.max_y_span+1 handles.max_x_span+1 handles.time_interval(2)-handles.time_interval(1)+1],'uint8');
     handles.s_imgs=zeros(size(handles.o_imgs),'uint8');
     handles.s_imgs_independent=zeros(size(handles.o_imgs),'uint8');   
-    
+
     for time=handles.time_interval(1):handles.time_interval(2)
-%         handles.box(time-handles.time_interval(1)+1,1:4)=[round(handles.min_max_mean(time-handles.time_interval(1)+1,5))-handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,5))+handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))-handles.max_y_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))+handles.max_y_span/2];
-        handles.box(time-handles.time_interval(1)+1,1:4)=[round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))-handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))+handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))-handles.max_y_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))+handles.max_y_span/2];
-        if sum(isnan(handles.box(time-handles.time_interval(1)+1,1:4)))>0
-            break;
-        end
+        handles.box(time-handles.time_interval(1)+1,1:4)=[round(handles.min_max_mean(time-handles.time_interval(1)+1,5))-handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,5))+handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))-handles.max_y_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))+handles.max_y_span/2];
         pixels=cell(1,2);
-%         pixels{1}=handles.box(time-handles.time_interval(1)+1,3:4);
-%         pixels{2}=handles.box(time-handles.time_interval(1)+1,1:2);   
-        
-        pixels{1}=min(max(handles.box(time-handles.time_interval(1)+1,3:4),1),size(img_in,1));
-        pixels{2}=min(max(handles.box(time-handles.time_interval(1)+1,1:2),1),size(img_in,2));        
-        
-        if handles.box(time-handles.time_interval(1)+1,3)<1
-            fy=-handles.box(time-handles.time_interval(1)+1,3)+2;
-        else
-            fy=1;
-        end
-        
-        if handles.box(time-handles.time_interval(1)+1,4)>size(img_in,1)
-            ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1-(handles.box(time-handles.time_interval(1)+1,4)-size(img_in,1));
-        else
-            ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1;
-        end        
-         
-%         handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time+first_ind_in_img_seq-1,'%.04d') '.tif'],'pixelregion',pixels);    
-        handles.o_imgs(fy:ly,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
+        pixels{1}=handles.box(time-handles.time_interval(1)+1,3:4);
+        pixels{2}=handles.box(time-handles.time_interval(1)+1,1:2);   
+        handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time+first_ind_in_img_seq-1,'%.04d') '.tif'],'pixelregion',pixels);    
+    %     imwrite(handles.o_imgs(:,:,time-time_interval(1)+1),['.\D_imgs\img_' num2str(time,'%.03d') '.tif']);    
     end
 
     handles.f_imgs=zeros(size(handles.o_imgs),'uint8');
