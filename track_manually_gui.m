@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 27-Jun-2013 14:37:35
+% Last Modified by GUIDE v2.5 17-Dec-2015 18:12:42
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,232 +56,6 @@ function track_manually_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for track_manually_gui
 handles.output = hObject;
 
-load_from_file=0;
-choice1 = questdlg('Load data from file?','', 'Yes','No','Yes');
-switch choice1
-    case 'Yes'       
-        [filename, pathname, index]=uigetfile('*.mat');
-
-        if index~=0
-            load([pathname filename]);
-            load_from_file=1;
-        end       
-end
-
-if load_from_file==0
-    
-% % %% 186 
-% % 
-% %     load Z:\mDrives\raid0\DSLM_WorkInProgress\matlab\experiments\workspace\Exp186_defGrid.mat timeStructureX timeStructureY
-% % 
-% %     image_path='Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\focus39\focused_one\focused_Exp186_';
-% % 
-% % %     time_struct_id=405; % 405 corresponds to D
-% % 
-% % %     time_struct_id=650;
-% % 
-% %     time_struct_id=18*60+43; %=1123
-% %     
-% % %     time_struct_id=442;
-% % 
-% %     handles.time_interval=[15 300];
-% %     
-% %     boundary=50;
-
-%%
-
-% open grid file, keep asking, if cancelled
-% this can be replaced with better question
-
-    while 1
-        [filename, pathname, ~]=uigetfile('*.mat','Open grid file');
-        if filename~=0
-            break
-        end
-    end
-    load([pathname filename],'timeStructureX','timeStructureY');
-    
-% find first image in image sequence    
-    while 1
-        [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
-        if filename~=0
-            break
-        end
-    end        
-    [~,name,~] = fileparts(filename);
-    underscore_inds=strfind(name,'_');
-    
-    first_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));
-    image_path=[pathname name(1:underscore_inds(end))];
-    
-% find last image in image sequence    
-    while 1
-        [filename, ~, ~]=uigetfile('*.tif','Point last image from grid sequence');
-        if filename~=0
-            break
-        end
-    end        
-    [~,name,~] = fileparts(filename);
-    underscore_inds=strfind(name,'_');
-    
-    last_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));    
-    
-    handles.time_interval=[first_ind_in_img_seq last_ind_in_img_seq];
-
-% show first image and the grid
-
-    figure(2)
-    clf
-    img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
-	imagesc(img_in);
-    colormap('gray')
-    hold on
-    line(timeStructureX{handles.time_interval(1)}',timeStructureY{handles.time_interval(1)}')
-    [x, y]=ginput(1);
-    
-    [~,time_struct_id]=min((mean(timeStructureX{handles.time_interval(1)},2)-x).^2+(mean(timeStructureY{handles.time_interval(1)},2)-y).^2);
-    
-    close(2)
-
-    boundary=50;
-    
-    
-%%
-
-%     keyboard
-
-    for time=handles.time_interval(1):handles.time_interval(2)
-        handles.min_max_mean(time-handles.time_interval(1)+1,1:6)=[min(timeStructureX{time}(time_struct_id,:)) max(timeStructureX{time}(time_struct_id,:)) min(timeStructureY{time}(time_struct_id,:)) max(timeStructureY{time}(time_struct_id,:)) mean(timeStructureX{time}(time_struct_id,:)) mean(timeStructureY{time}(time_struct_id,:))];
-    end
-
-    handles.max_x_span=ceil((ceil(max(handles.min_max_mean(:,2)-handles.min_max_mean(:,1))+boundary*2)/2))*2;
-    handles.max_y_span=ceil((ceil(max(handles.min_max_mean(:,4)-handles.min_max_mean(:,3))+boundary*2)/2))*2;
-
-    handles.o_imgs=zeros([handles.max_y_span+1 handles.max_x_span+1 handles.time_interval(2)-handles.time_interval(1)+1],'uint8');
-    handles.s_imgs=zeros(size(handles.o_imgs),'uint8');
-    handles.s_imgs_independent=zeros(size(handles.o_imgs),'uint8');   
-    
-    for time=handles.time_interval(1):handles.time_interval(2)
-%         handles.box(time-handles.time_interval(1)+1,1:4)=[round(handles.min_max_mean(time-handles.time_interval(1)+1,5))-handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,5))+handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))-handles.max_y_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))+handles.max_y_span/2];
-        handles.box(time-handles.time_interval(1)+1,1:4)=[round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))-handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))+handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))-handles.max_y_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))+handles.max_y_span/2];
-        if sum(isnan(handles.box(time-handles.time_interval(1)+1,1:4)))>0
-            break;
-        end
-        pixels=cell(1,2);
-%         pixels{1}=handles.box(time-handles.time_interval(1)+1,3:4);
-%         pixels{2}=handles.box(time-handles.time_interval(1)+1,1:2);   
-        
-        pixels{1}=min(max(handles.box(time-handles.time_interval(1)+1,3:4),1),size(img_in,1));
-        pixels{2}=min(max(handles.box(time-handles.time_interval(1)+1,1:2),1),size(img_in,2));        
-        
-        if handles.box(time-handles.time_interval(1)+1,3)<1
-            fy=-handles.box(time-handles.time_interval(1)+1,3)+2;
-        else
-            fy=1;
-        end
-        
-        if handles.box(time-handles.time_interval(1)+1,4)>size(img_in,1)
-            ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1-(handles.box(time-handles.time_interval(1)+1,4)-size(img_in,1));
-        else
-            ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1;
-        end        
-         
-%         handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time+first_ind_in_img_seq-1,'%.04d') '.tif'],'pixelregion',pixels);    
-        handles.o_imgs(fy:ly,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
-    end
-
-    handles.f_imgs=zeros(size(handles.o_imgs),'uint8');
-    imwrite(handles.o_imgs(:,:,1),'temp.tif');
-    for i_ind=2:size(handles.o_imgs,3)
-        imwrite(handles.o_imgs(:,:,i_ind),'temp.tif','writemode','append');
-    end
-%     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm', 'Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\temp.tif','Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\filt_temp.tif');
-    antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
-    for i_ind=1:size(handles.o_imgs,3)
-        handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
-    end
-    delete temp.tif filt_temp.tif
-    
-    handles.time=[];    
-    handles.cur_img=imagesc(handles.o_imgs(:,:,1),'parent',handles.axis1);
-    set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.time_interval(1),'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);    
-    set(handles.text1,'string',num2str(handles.time_interval(1)));
-    
-    handles.selection=[];
-    handles.centroid_scatter=[];
-
-    handles.c_ind_max=16;
-    handles.c_map=jet(handles.c_ind_max);
-
-    handles.correspondence=[];
-    handles.undersegmentation_lines=[];
-    handles.oversegmentation_lines=[];
-    
-    handles.inds_alive=[];
-    handles.labeled_independent_image=[];
-    handles.cents=[];
-    
-    handles.projected_points=[];
-    handles.projection_scatter=[];
-    
-    colormap(handles.axis1,'gray');
-    hold(handles.axis1,'on');
-    axis(handles.axis1,'off','equal');    
-else  
-    global param;
-    
-    handles.time_interval=handles1.time_interval;
-         
-    handles.min_max_mean=handles1.min_max_mean;
-    handles.max_x_span=handles1.max_x_span;
-    handles.max_y_span=handles1.max_y_span;
-    handles.o_imgs=handles1.o_imgs;
-    handles.s_imgs=handles1.s_imgs;
-    handles.s_imgs_independent=handles1.s_imgs_independent;
-    handles.box=handles1.box;
-    handles.f_imgs=handles1.f_imgs;
-    handles.time=handles1.time;
-    handles.selection=handles1.selection;
-    handles.centroid_scatter=[];
-    handles.c_ind_max=handles1.c_ind_max;
-    handles.c_map=handles1.c_map;
-    handles.correspondence=handles1.correspondence;
-    handles.undersegmentation_lines=[];
-    handles.oversegmentation_lines=[];
-    handles.slider2_value=round(handles1.slider2_value);
-    handles.projected_points=handles1.projected_points;
-    handles.projection_scatter=[];
-    
-    handles.inds_alive=handles1.inds_alive;    
-    handles.labeled_independent_image=handles1.labeled_independent_image;    
-    handles.cents=handles1.cents;    
-       
-    handles.cur_img=imagesc(handles.o_imgs(:,:,handles.slider2_value-handles.time_interval(1)+1),'parent',handles.axis1);    
-
-    colormap(handles.axis1,'gray');
-    hold(handles.axis1,'on');
-    axis(handles.axis1,'off','equal');    
-    
-    handles.centroid_scatter=draw_selection(handles);
-    handles.projection_scatter=draw_projection(handles);
-    
-%     keyboard
-    
-    guidata(hObject, handles);
-    set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
-    set(handles.text1,'string',num2str(handles.slider2_value));
-    
-    draw_image(handles);
-end
-
-% axis(handles.cur_img,'ydir','reverse');
-
-% keyboard
-% colormap(handles.axis1,'gray');
-% hold(handles.axis1,'on');
-% axis(handles.axis1,'off','equal');
-
-set(handles.cur_img,'ButtonDownFcn',@position_and_button);
 set(handles.figure1,'WindowButtonD',[])
 
 guidata(hObject, handles);
@@ -334,6 +108,7 @@ if ~isempty(handles.selection)
     end
 
     handles.centroid_scatter=draw_selection(handles);
+    handles.centroid_tracks_lines=draw_tracks(handles);
         
     guidata(hObject, handles);
 end
@@ -360,21 +135,6 @@ if get(handles.checkbox9,'value')==1
 end
 end
 
-    
-
-% if get(handles.checkbox5,'value')==1 & (round(get(handles.slider2,'Value'))-handles.time_interval(1)+1)==handles.time
-% 	set(handles.oversegmentation_lines,'visible','on');
-% else    
-%     set(handles.oversegmentation_lines,'visible','off');
-% end
-%         
-% if get(handles.checkbox6,'value')==1 & (round(get(handles.slider2,'Value'))-handles.time_interval(1)+1)==handles.time
-% 	set(handles.undersegmentation_lines,'visible','on');
-% else    
-%     set(handles.undersegmentation_lines,'visible','off');
-% end
-
-
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
@@ -396,6 +156,48 @@ if ~isempty(handles.selection)
     end
 else
    centroid_scatter=[];
+end
+end
+
+function track_lines=draw_tracks(handles)
+global param
+if ~isfield(handles,'centroid_tracks_lines')
+    handles.centroid_tracks_lines=[];
+end
+if ishandle(handles.centroid_tracks_lines)        
+    delete(handles.centroid_tracks_lines);
+end
+
+if ~isempty(handles.selection)
+    s_inds=handles.selection(:,1)>0;
+
+    if get(handles.checkbox6,'value')==1
+        
+        cell_tracks_x=zeros(0);
+        cell_tracks_y=zeros(0);
+        t_ind=1;
+        for c_ind=handles.selection(s_inds,3)'
+            temp=param.tracks(c_ind).cent;
+            cell_tracks_x(1:size(temp,1),t_ind)=temp(:,1);
+            cell_tracks_y(1:size(temp,1),t_ind)=temp(:,2);
+            t_ind=t_ind+1;
+        end
+        cell_tracks_x(cell_tracks_x(:)==0)=nan;
+        cell_tracks_y(cell_tracks_y(:)==0)=nan;
+        
+        track_lines=line(cell_tracks_x,cell_tracks_y);
+%         param.track_c_map(param.c_map_inds(handles.selection(s_inds,3)),:)        
+        colours_to_use=param.track_c_map(param.c_map_inds(handles.selection(s_inds,3)),:);
+        for t_ind=1:size(track_lines,1)
+            set(track_lines(t_ind),'color',colours_to_use(t_ind,:));
+        end
+        
+        set(track_lines,'hittest','off');
+    else
+        track_lines=[];
+    end
+else
+   track_lines=[];
 end
 end
 
@@ -514,8 +316,11 @@ if isempty(handles.time)
     
 %% make intial selection    
 
-    handles.selection=handles.cents{handles.time}((handles.cents{handles.time}(:,1)>=(param.img_s(1)/2-diff(handles.min_max_mean(1,1:2))/2)) & (handles.cents{handles.time}(:,1)<=(param.img_s(1)/2+diff(handles.min_max_mean(1,1:2))/2)) & (handles.cents{handles.time}(:,2)>=(param.img_s(2)/2-diff(handles.min_max_mean(1,3:4))/2)) & (handles.cents{handles.time}(:,2)<=(param.img_s(2)/2+diff(handles.min_max_mean(1,3:4))/2)),:);
-%     guidata(hObject, handles);
+% %     handles.selection=handles.cents{handles.time}(...
+% %         (handles.cents{handles.time}(:,1)>=(param.img_s(1)/2-diff(handles.min_max_mean(1,1:2))/2)) & ...
+% %         (handles.cents{handles.time}(:,1)<=(param.img_s(1)/2+diff(handles.min_max_mean(1,1:2))/2)) & ...
+% %         (handles.cents{handles.time}(:,2)>=(param.img_s(2)/2-diff(handles.min_max_mean(1,3:4))/2)) & ...
+% %         (handles.cents{handles.time}(:,2)<=(param.img_s(2)/2+diff(handles.min_max_mean(1,3:4))/2)),:);
         
 %%        
     
@@ -542,7 +347,7 @@ elseif (handles.time+handles.time_interval(1)-1)==round(get(handles.slider2,'val
     end    
     
     draw_image(handles);
-%     handles.centroid_scatter=draw_selection(handles);
+    handles.centroid_scatter=draw_selection(handles);
     
     guidata(hObject, handles);
     
@@ -610,14 +415,12 @@ Button = get( ancestor(hObject,'figure'), 'SelectionType' );
 handles=guidata(gcf);
 
 %     keyboard
-
+% select and unselect a track
 if ~isempty(handles.time) & handles.time>=round((get(handles.slider2,'value')-handles.time_interval(1)+1)) & get(handles.checkbox7,'value')==0
     if strcmp(Button,'normal')
 %         keyboard
         [~,m_ind]=min(sum((double(handles.cents{round(get(handles.slider2,'value'))-handles.time_interval(1)+1}(:,1:2))-repmat(Position(1,1:2),[length(handles.cents{round(get(handles.slider2,'Value'))-handles.time_interval(1)+1}) 1])).^2,2));
         candidate=handles.cents{round(get(handles.slider2,'Value'))-handles.time_interval(1)+1}(m_ind,:);
-
-    %     keyboard
 
         if ~isempty(handles.selection) & sum(handles.selection(:,3)==candidate(1,3))>0
             handles.selection(handles.selection(:,3)==candidate(1,3),:)=[];
@@ -626,6 +429,7 @@ if ~isempty(handles.time) & handles.time>=round((get(handles.slider2,'value')-ha
         end
 
         handles.centroid_scatter=draw_selection(handles);
+        handles.centroid_tracks_lines=draw_tracks(handles);
     end
 elseif ~isempty(handles.time) & handles.time==round((get(handles.slider2,'value')-handles.time_interval(1)+1)) & get(handles.checkbox7,'value')==1 & handles.time~=1
     
@@ -763,13 +567,6 @@ function checkbox5_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox5
-if (round(get(handles.slider2,'Value'))-handles.time_interval(1)+1)==handles.time
-    if get(handles.checkbox5,'value')==0
-        set(handles.oversegmentation_lines,'visible','off');
-    else
-        set(handles.oversegmentation_lines,'visible','on');
-    end
-end
 end
 
 % --- Executes on button press in checkbox6.
@@ -779,13 +576,8 @@ function checkbox6_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox6
-if (round(get(handles.slider2,'Value'))-handles.time_interval(1)+1)==handles.time
-    if get(handles.checkbox6,'value')==0
-        set(handles.undersegmentation_lines,'visible','off');
-    else
-        set(handles.undersegmentation_lines,'visible','on');
-    end
-end
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
 end
 
 % --- Executes on button press in pushbutton10.
@@ -927,7 +719,18 @@ slider2_Callback(handles.slider2,[],handles);
 
 set(handles.pushbutton12,'enable','off');
 set(handles.pushbutton4,'enable','on');
+guidata(handles.figure1, handles);
 
+% if auto tracking is checked segment automatically
+if get(handles.checkbox5,'value')==1
+% segment
+    pushbutton4_Callback(hObject, eventdata, handles)
+    handles=guidata(gcf);
+% refresh selection    
+    slider2_Callback(hObject, eventdata, handles);
+    handles=guidata(gcf);    
+end
+handles.centroid_scatter=draw_selection(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1158,12 +961,54 @@ end
 function [s_img]=antti_track_next_time_point(f_img,time,projected_points)
 
 global param;
-
+inds_alive=projected_points;
 bw_mask=zeros(fliplr(param.img_s));
 bw_mask(sub2ind(fliplr(param.img_s),double(projected_points(:,3)),double(projected_points(:,2))))=1;
-segment_temp=(watershed(imimposemin(f_img,bw_mask)));
 
-inds_alive=projected_points;
+%%
+for c_ind=1:size(projected_points,1) 
+    projected_points(c_ind,5)=max(1,floor(sqrt(double(param.tracks(c_ind).A(end)/pi))*0.4));
+end
+for d_ind=2:max(projected_points(:,5))
+    projected_points(projected_points(:,5)<d_ind,:)=[];
+    for c_ind=1:size(projected_points,1)
+        if (projected_points(c_ind,2)+d_ind-1)>=size(f_img,2) | (projected_points(c_ind,3)+d_ind-1)>=size(f_img,1) | (projected_points(c_ind,2)-d_ind+1)<=1 | (projected_points(c_ind,3)-d_ind+1)<=1
+            continue
+        end
+        % right
+        x_point=projected_points(c_ind,2)+d_ind;
+        y_point=projected_points(c_ind,3);        
+        if sum(bw_mask((y_point-1):(y_point+1),x_point))==0
+            bw_mask(y_point,x_point-1)=1;
+        end
+        
+        % left
+        x_point=projected_points(c_ind,2)-d_ind;
+        y_point=projected_points(c_ind,3);        
+        if sum(bw_mask((y_point-1):(y_point+1),x_point))==0
+            bw_mask(y_point,x_point+1)=1;
+        end  
+        
+        % top
+        x_point=projected_points(c_ind,2);
+        y_point=projected_points(c_ind,3)-d_ind;        
+        if sum(bw_mask(y_point,(x_point-1):(x_point+1)))==0
+            bw_mask(y_point+1,x_point)=1;
+        end        
+        
+        % bottom
+        x_point=projected_points(c_ind,2);
+        y_point=projected_points(c_ind,3)+d_ind;        
+        if sum(bw_mask(y_point,(x_point-1):(x_point+1)))==0
+            bw_mask(y_point-1,x_point)=1;
+        end                
+    end
+    
+end
+
+%%
+
+segment_temp=(watershed(imimposemin(f_img,bw_mask)));
 
 s_img=uint8(~logical(segment_temp))*255;
 
@@ -1579,8 +1424,214 @@ plot(non_smooth_curve_times(X_dis), disappearing_T1(X_dis),'oc',non_smooth_curve
 
 end
 
+% new data set
+% --- Executes on button press in pushbutton15.
+function pushbutton15_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton15 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% open grid file, keep asking, if cancelled
+% this can be replaced with better question
+
+while 1
+    [filename, pathname, ~]=uigetfile('*.mat','Open grid file');
+    if filename~=0
+        break
+    end
+end
+load([pathname filename],'timeStructureX','timeStructureY');
+
+% find first image in image sequence    
+while 1
+    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
+    if filename~=0
+        break
+    end
+end        
+[~,name,~] = fileparts(filename);
+underscore_inds=strfind(name,'_');
+
+first_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));
+image_path=[pathname name(1:underscore_inds(end))];
+
+AllNames=dir([image_path '*']);
+last_ind_in_img_seq=length(AllNames);
+
+AnswerOut = inputdlg('Number of time points','Number of time points',1,{num2str(last_ind_in_img_seq)});
+% user cancelled the dialog
+if isempty(AnswerOut)
+    return;
+end
+% check the index exceed the maximum
+if str2num(AnswerOut{:})<=last_ind_in_img_seq
+    last_ind_in_img_seq=str2num(AnswerOut{:});
+end
+
+handles.time_interval=[first_ind_in_img_seq last_ind_in_img_seq];
+
+% show first image and the grid
+
+figure(2)
+clf
+img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
+imagesc(img_in);
+colormap('gray')
+hold on
+line(timeStructureX{handles.time_interval(1)}',timeStructureY{handles.time_interval(1)}')
+[x, y]=ginput(1);
+
+[~,time_struct_id]=min((mean(timeStructureX{handles.time_interval(1)},2)-x).^2+(mean(timeStructureY{handles.time_interval(1)},2)-y).^2);
+
+close(2)
+
+boundary=50;
 
 
+%%
+
+%     keyboard
+
+for time=handles.time_interval(1):handles.time_interval(2)
+    handles.min_max_mean(time-handles.time_interval(1)+1,1:6)=[min(timeStructureX{time}(time_struct_id,:)) max(timeStructureX{time}(time_struct_id,:)) min(timeStructureY{time}(time_struct_id,:)) max(timeStructureY{time}(time_struct_id,:)) mean(timeStructureX{time}(time_struct_id,:)) mean(timeStructureY{time}(time_struct_id,:))];
+end
+
+handles.max_x_span=ceil((ceil(max(handles.min_max_mean(:,2)-handles.min_max_mean(:,1))+boundary*2)/2))*2;
+handles.max_y_span=ceil((ceil(max(handles.min_max_mean(:,4)-handles.min_max_mean(:,3))+boundary*2)/2))*2;
+
+handles.o_imgs=zeros([handles.max_y_span+1 handles.max_x_span+1 handles.time_interval(2)-handles.time_interval(1)+1],'uint8');
+handles.s_imgs=zeros(size(handles.o_imgs),'uint8');
+handles.s_imgs_independent=zeros(size(handles.o_imgs),'uint8');   
+
+for time=handles.time_interval(1):handles.time_interval(2)
+%         handles.box(time-handles.time_interval(1)+1,1:4)=[round(handles.min_max_mean(time-handles.time_interval(1)+1,5))-handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,5))+handles.max_x_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))-handles.max_y_span/2 round(handles.min_max_mean(time-handles.time_interval(1)+1,6))+handles.max_y_span/2];
+    handles.box(time-handles.time_interval(1)+1,1:4)=[round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))-handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,5)))+handles.max_x_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))-handles.max_y_span/2 round(mean(handles.min_max_mean(time-handles.time_interval(1)+1,6)))+handles.max_y_span/2];
+    if sum(isnan(handles.box(time-handles.time_interval(1)+1,1:4)))>0
+        break;
+    end
+    pixels=cell(1,2);
+%         pixels{1}=handles.box(time-handles.time_interval(1)+1,3:4);
+%         pixels{2}=handles.box(time-handles.time_interval(1)+1,1:2);   
+
+    pixels{1}=min(max(handles.box(time-handles.time_interval(1)+1,3:4),1),size(img_in,1));
+    pixels{2}=min(max(handles.box(time-handles.time_interval(1)+1,1:2),1),size(img_in,2));        
+
+    if handles.box(time-handles.time_interval(1)+1,3)<1
+        fy=-handles.box(time-handles.time_interval(1)+1,3)+2;
+    else
+        fy=1;
+    end
+
+    if handles.box(time-handles.time_interval(1)+1,4)>size(img_in,1)
+        ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1-(handles.box(time-handles.time_interval(1)+1,4)-size(img_in,1));
+    else
+        ly=diff(handles.box(time-handles.time_interval(1)+1,3:4))+1;
+    end        
+
+%         handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time+first_ind_in_img_seq-1,'%.04d') '.tif'],'pixelregion',pixels);    
+    handles.o_imgs(fy:ly,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
+end
+
+handles.f_imgs=zeros(size(handles.o_imgs),'uint8');
+imwrite(handles.o_imgs(:,:,1),'temp.tif');
+for i_ind=2:size(handles.o_imgs,3)
+    imwrite(handles.o_imgs(:,:,i_ind),'temp.tif','writemode','append');
+end
+%     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm', 'Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\temp.tif','Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\filt_temp.tif');
+antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
+for i_ind=1:size(handles.o_imgs,3)
+    handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
+end
+delete temp.tif filt_temp.tif
+
+handles.time=[];    
+handles.cur_img=imagesc(handles.o_imgs(:,:,1),'parent',handles.axis1);
+set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.time_interval(1),'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);    
+set(handles.text1,'string',num2str(handles.time_interval(1)));
+
+handles.selection=[];
+handles.centroid_scatter=[];
+handles.centroid_tracks_lines=[];
+
+handles.c_ind_max=16;
+handles.c_map=jet(handles.c_ind_max);
+
+handles.correspondence=[];
+
+handles.inds_alive=[];
+handles.labeled_independent_image=[];
+handles.cents=[];
+
+handles.projected_points=[];
+handles.projection_scatter=[];
+
+colormap(handles.axis1,'gray');
+hold(handles.axis1,'on');
+axis(handles.axis1,'off','equal');    
+set(handles.cur_img,'ButtonDownFcn',@position_and_button);
+set(handles.pushbutton12,'enable','off');
+guidata(hObject, handles);
+
+end
+
+% load data set
+% --- Executes on button press in pushbutton16.
+function pushbutton16_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton16 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+[filename, pathname, index]=uigetfile('*.mat');
+
+% return if user cancelled
+if index==0
+    return
+end
+
+load([pathname filename]);
+global param;
+
+handles.time_interval=handles1.time_interval;
+
+handles.min_max_mean=handles1.min_max_mean;
+handles.max_x_span=handles1.max_x_span;
+handles.max_y_span=handles1.max_y_span;
+handles.o_imgs=handles1.o_imgs;
+handles.s_imgs=handles1.s_imgs;
+handles.s_imgs_independent=handles1.s_imgs_independent;
+handles.box=handles1.box;
+handles.f_imgs=handles1.f_imgs;
+handles.time=handles1.time;
+handles.selection=handles1.selection;
+handles.centroid_scatter=[];
+handles.centroid_tracks_lines=[];
+handles.c_ind_max=handles1.c_ind_max;
+handles.c_map=handles1.c_map;
+handles.correspondence=handles1.correspondence;
+handles.slider2_value=round(handles1.slider2_value);
+handles.projected_points=handles1.projected_points;
+handles.projection_scatter=[];
+
+handles.inds_alive=handles1.inds_alive;    
+handles.labeled_independent_image=handles1.labeled_independent_image;    
+handles.cents=handles1.cents;    
+
+handles.cur_img=imagesc(handles.o_imgs(:,:,handles.slider2_value-handles.time_interval(1)+1),'parent',handles.axis1);    
+
+colormap(handles.axis1,'gray');
+hold(handles.axis1,'on');
+axis(handles.axis1,'off','equal');    
+
+handles.centroid_scatter=draw_selection(handles);
+handles.projection_scatter=draw_projection(handles);
+handles.centroid_tracks_lines=draw_tracks(handles);
+
+guidata(hObject, handles);
+set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
+set(handles.text1,'string',num2str(handles.slider2_value));
+
+draw_image(handles);
+set(handles.cur_img,'ButtonDownFcn',@position_and_button);
 
 
-
+end
