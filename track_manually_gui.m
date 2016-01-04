@@ -162,12 +162,12 @@ end
 
 function track_lines=draw_tracks(handles)
 global param
-if ~isfield(handles,'centroid_tracks_lines')
-    handles.centroid_tracks_lines=[];
-end
-if ishandle(handles.centroid_tracks_lines)        
+
+try
     delete(handles.centroid_tracks_lines);
+catch
 end
+track_lines=[];
 
 if ~isempty(handles.selection)
     s_inds=handles.selection(:,1)>0;
@@ -194,22 +194,17 @@ if ~isempty(handles.selection)
         end
         
         set(track_lines,'hittest','off');
-    else
-        track_lines=[];
     end
-else
-   track_lines=[];
 end
 end
 
 function neighbour_lines=draw_neighbours(handles)
 global param
-if ~isfield(handles,'centroid_neighbour_lines')
-    handles.centroid_neighbour_lines=[];
+try 
+    delete(handles.centroid_neighbour_lines);
+catch
 end
-if ishandle(handles.centroid_tracks_lines)
-    delete(handles.centroid_tracks_lines);
-end
+neighbour_lines=[];
 
 if ~isempty(handles.selection)
     s_inds=handles.selection(:,1)>0;
@@ -222,10 +217,10 @@ if ~isempty(handles.selection)
         all_cell_inds=handles.selection(s_inds,3)';
         for c_ind1_index=1:length(all_cell_inds)
             c_ind1=all_cell_inds(c_ind1_index);
-            cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)-1-param.tracks(c_ind1).t(1)+1;
+            cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)+1-param.tracks(c_ind1).t(1)+1;
             for c_ind2_index=(c_ind1_index+1):length(all_cell_inds)
                 c_ind2=all_cell_inds(c_ind2_index);              
-                cell_time_2=get(handles.slider2,'value')-handles.time_interval(1)-1-param.tracks(c_ind2).t(1)+1;
+                cell_time_2=get(handles.slider2,'value')-handles.time_interval(1)+1-param.tracks(c_ind2).t(1)+1;
 % neighbours found
                 if sum(param.tracks(c_ind1).neighs{cell_time_1}==c_ind2)>0
                     cent_1=double(param.tracks(c_ind1).cent(cell_time_1,:));
@@ -243,11 +238,7 @@ if ~isempty(handles.selection)
         set(neighbour_lines,'color',[0 1 0]);
         
         set(neighbour_lines,'hittest','off');
-    else
-        neighbour_lines=[];
     end
-else
-   neighbour_lines=[];
 end
 end
 
@@ -628,7 +619,7 @@ function checkbox6_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox6
 handles.centroid_tracks_lines=draw_tracks(handles);
-guidata(handles.figure1, handles);
+% guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 guidata(handles.figure1, handles);
 end
