@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 17-Dec-2015 18:12:42
+% Last Modified by GUIDE v2.5 18-Dec-2015 17:12:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -109,6 +109,7 @@ if ~isempty(handles.selection)
 
     handles.centroid_scatter=draw_selection(handles);
     handles.centroid_tracks_lines=draw_tracks(handles);
+    handles.centroid_neighbour_lines=draw_neighbours(handles);
         
     guidata(hObject, handles);
 end
@@ -198,6 +199,55 @@ if ~isempty(handles.selection)
     end
 else
    track_lines=[];
+end
+end
+
+function neighbour_lines=draw_neighbours(handles)
+global param
+if ~isfield(handles,'centroid_neighbour_lines')
+    handles.centroid_neighbour_lines=[];
+end
+if ishandle(handles.centroid_tracks_lines)
+    delete(handles.centroid_tracks_lines);
+end
+
+if ~isempty(handles.selection)
+    s_inds=handles.selection(:,1)>0;
+
+    if get(handles.checkbox10,'value')==1
+        neighbours_x=zeros(2,100);
+        neighbours_y=zeros(2,100);
+        n_ind=1;        
+        
+        all_cell_inds=handles.selection(s_inds,3)';
+        for c_ind1_index=1:length(all_cell_inds)
+            c_ind1=all_cell_inds(c_ind1_index);
+            cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)-1-param.tracks(c_ind1).t(1)+1;
+            for c_ind2_index=(c_ind1_index+1):length(all_cell_inds)
+                c_ind2=all_cell_inds(c_ind2_index);              
+                cell_time_2=get(handles.slider2,'value')-handles.time_interval(1)-1-param.tracks(c_ind2).t(1)+1;
+% neighbours found
+                if sum(param.tracks(c_ind1).neighs{cell_time_1}==c_ind2)>0
+                    cent_1=double(param.tracks(c_ind1).cent(cell_time_1,:));
+                    cent_2=double(param.tracks(c_ind2).cent(cell_time_2,:));                    
+                    neighbours_x(:,n_ind)=[cent_1(1);cent_2(1)];
+                    neighbours_y(:,n_ind)=[cent_1(2);cent_2(2)];
+                    n_ind=n_ind+1;
+                end
+            end            
+        end
+        neighbours_x(:,n_ind:end)=[];
+        neighbours_y(:,n_ind:end)=[];
+        
+        neighbour_lines=line(neighbours_x,neighbours_y);        
+        set(neighbour_lines,'color',[0 1 0]);
+        
+        set(neighbour_lines,'hittest','off');
+    else
+        neighbour_lines=[];
+    end
+else
+   neighbour_lines=[];
 end
 end
 
@@ -430,6 +480,7 @@ if ~isempty(handles.time) & handles.time>=round((get(handles.slider2,'value')-ha
 
         handles.centroid_scatter=draw_selection(handles);
         handles.centroid_tracks_lines=draw_tracks(handles);
+        handles.centroid_neighbour_lines=draw_neighbours(handles);
     end
 elseif ~isempty(handles.time) & handles.time==round((get(handles.slider2,'value')-handles.time_interval(1)+1)) & get(handles.checkbox7,'value')==1 & handles.time~=1
     
@@ -577,6 +628,8 @@ function checkbox6_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox6
 handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1552,6 +1605,7 @@ set(handles.text1,'string',num2str(handles.time_interval(1)));
 handles.selection=[];
 handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
+handles.centroid_neighbour_lines=[];
 
 handles.c_ind_max=16;
 handles.c_map=jet(handles.c_ind_max);
@@ -1605,6 +1659,7 @@ handles.time=handles1.time;
 handles.selection=handles1.selection;
 handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
+handles.centroid_neighbour_lines=[];
 handles.c_ind_max=handles1.c_ind_max;
 handles.c_map=handles1.c_map;
 handles.correspondence=handles1.correspondence;
@@ -1625,6 +1680,7 @@ axis(handles.axis1,'off','equal');
 handles.centroid_scatter=draw_selection(handles);
 handles.projection_scatter=draw_projection(handles);
 handles.centroid_tracks_lines=draw_tracks(handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
 
 guidata(hObject, handles);
 set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
@@ -1634,4 +1690,18 @@ draw_image(handles);
 set(handles.cur_img,'ButtonDownFcn',@position_and_button);
 
 
+end
+
+
+% --- Executes on button press in checkbox10.
+function checkbox10_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox10 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox10
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+guidata(handles.figure1, handles);
 end
