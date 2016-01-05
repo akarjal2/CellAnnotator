@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 18-Dec-2015 17:12:37
+% Last Modified by GUIDE v2.5 04-Jan-2016 15:24:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -110,6 +110,7 @@ if ~isempty(handles.selection)
     handles.centroid_scatter=draw_selection(handles);
     handles.centroid_tracks_lines=draw_tracks(handles);
     handles.centroid_neighbour_lines=draw_neighbours(handles);
+    handles.centroid_polygons=draw_polygons(handles);
         
     guidata(hObject, handles);
 end
@@ -235,9 +236,92 @@ if ~isempty(handles.selection)
         neighbours_y(:,n_ind:end)=[];
         
         neighbour_lines=line(neighbours_x,neighbours_y);        
-        set(neighbour_lines,'color',[0 1 0]);
+        set(neighbour_lines,'color',[1 1 0.9999]);
         
         set(neighbour_lines,'hittest','off');
+    end
+end
+end
+
+function polygon_coordinates=draw_polygons(handles)
+global param
+try 
+    delete(handles.centroid_polygons);
+catch
+end
+polygon_coordinates=[];
+
+if ~isempty(handles.selection)
+    s_inds=handles.selection(:,1)>0;
+
+    if get(handles.checkbox11,'value')==1
+        polygons_x=zeros(10,100);
+        polygons_y=zeros(10,100);
+        n_ind=1;        
+        
+        all_cell_inds=handles.selection(s_inds,3)';
+        for c_ind1_index=1:length(all_cell_inds)
+            c_ind1=all_cell_inds(c_ind1_index);
+            cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)+1-param.tracks(c_ind1).t(1)+1;
+        
+            temp_points=zeros(100,2);
+            for b_ind=1:length(param.tracks(c_ind1).bounds{cell_time_1})                
+                num_points_end=param.tracks(c_ind1).bounds{cell_time_1}{b_ind}(1,1);
+                b_points_end=double(param.tracks(c_ind1).bounds{cell_time_1}{b_ind}(2:(num_points_end+1),:));
+                if num_points_end==1
+                    b_points_end(2,:)=b_points_end(1,:);
+                    num_points_end=2;
+                end
+                
+                distances=(repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
+                    (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2;
+                [vals, max_inds]=max(distances);
+                [~,m_ind_j]=max(vals);
+                m_ind_i=max_inds(m_ind_j);
+                
+                temp_points(b_ind*2-1,:)=b_points_end(m_ind_i,:);
+                temp_points(b_ind*2,:)=b_points_end(m_ind_j,:);
+            end
+            temp_points((b_ind*2+1):end,:)=[];
+            
+            for b_ind=3:2:size(temp_points,1)
+                find_single_points=(temp_points(b_ind:2:end,1)==temp_points((b_ind+1):2:end,1) & temp_points(b_ind:2:end,2)==temp_points((b_ind+1):2:end,2))';
+                find_single_points(2,:)=0;
+                find_single_points=find_single_points(:);                
+                [~,m_ind]=min((temp_points(b_ind:end,1)-temp_points(b_ind-1,1)).^2+  (temp_points(b_ind:end,2)-temp_points(b_ind-1,2)).^2-find_single_points*0.01);
+                m_ind=m_ind+b_ind-1;
+                if mod(m_ind,2)==0
+                    m_ind=m_ind-1;
+                    temp_points(m_ind:(m_ind+1),:)=flipud(temp_points(m_ind:(m_ind+1),:));                    
+                end
+                if m_ind~=b_ind
+                    temp=temp_points(b_ind:(b_ind+1),:);
+                    temp_points(b_ind:(b_ind+1),:)=temp_points(m_ind:(m_ind+1),:);
+                    temp_points(m_ind:(m_ind+1),:)=temp;
+                end                    
+            end
+
+            polygons_x(1:size(temp_points,1)/2,n_ind)=temp_points(1:2:end,1);
+            polygons_y(1:size(temp_points,1)/2,n_ind)=temp_points(1:2:end,2);
+                       
+            n_ind=n_ind+1;
+        end
+        polygons_x(:,n_ind:end)=[];
+        polygons_y(:,n_ind:end)=[];
+        
+        for n_ind=1:size(polygons_x,2)
+            polygons_x(polygons_x(:,n_ind)==0,n_ind)=polygons_x(find(polygons_x(:,n_ind),1,'last'),n_ind);
+            polygons_y(polygons_y(:,n_ind)==0,n_ind)=polygons_y(find(polygons_y(:,n_ind),1,'last'),n_ind);
+        end
+                
+        polygon_coordinates=fill(polygons_x,polygons_y,[1 0 1]);
+        
+        colours_to_use=param.track_c_map(param.c_map_inds(handles.selection(s_inds,3)),:);        
+        for f_ind=1:length(polygon_coordinates)
+            set(polygon_coordinates(f_ind),'Facecolor',colours_to_use(f_ind,:))
+        end
+        
+        set(polygon_coordinates,'hittest','off');
     end
 end
 end
@@ -472,6 +556,7 @@ if ~isempty(handles.time) & handles.time>=round((get(handles.slider2,'value')-ha
         handles.centroid_scatter=draw_selection(handles);
         handles.centroid_tracks_lines=draw_tracks(handles);
         handles.centroid_neighbour_lines=draw_neighbours(handles);
+        handles.centroid_polygons=draw_polygons(handles);
     end
 elseif ~isempty(handles.time) & handles.time==round((get(handles.slider2,'value')-handles.time_interval(1)+1)) & get(handles.checkbox7,'value')==1 & handles.time~=1
     
@@ -621,6 +706,7 @@ function checkbox6_Callback(hObject, eventdata, handles)
 handles.centroid_tracks_lines=draw_tracks(handles);
 % guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1597,6 +1683,7 @@ handles.selection=[];
 handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
+handles.centroid_polygons=[];
 
 handles.c_ind_max=16;
 handles.c_map=jet(handles.c_ind_max);
@@ -1651,6 +1738,7 @@ handles.selection=handles1.selection;
 handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
+handles.centroid_polygons=[];
 handles.c_ind_max=handles1.c_ind_max;
 handles.c_map=handles1.c_map;
 handles.correspondence=handles1.correspondence;
@@ -1672,6 +1760,7 @@ handles.centroid_scatter=draw_selection(handles);
 handles.projection_scatter=draw_projection(handles);
 handles.centroid_tracks_lines=draw_tracks(handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
 
 guidata(hObject, handles);
 set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
@@ -1694,5 +1783,21 @@ function checkbox10_Callback(hObject, eventdata, handles)
 handles.centroid_tracks_lines=draw_tracks(handles);
 guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
+guidata(handles.figure1, handles);
+end
+
+
+% --- Executes on button press in checkbox11.
+function checkbox11_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox11 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox11
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
 guidata(handles.figure1, handles);
 end
