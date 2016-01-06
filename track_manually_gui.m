@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 06-Jan-2016 10:36:42
+% Last Modified by GUIDE v2.5 06-Jan-2016 15:33:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1587,6 +1587,135 @@ function new_image_sequence_Callback(hObject, eventdata, handles)
 % hObject    handle to new_image_sequence (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+while 1
+    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
+    if filename~=0
+        break
+    end
+end        
+[~,name,~] = fileparts(filename);
+underscore_inds=strfind(name,'_');
+
+first_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));
+image_path=[pathname name(1:underscore_inds(end))];
+
+AllNames=dir([image_path '*']);
+last_ind_in_img_seq=length(AllNames);
+
+AnswerOut = inputdlg('Number of time points','Number of time points',1,{num2str(last_ind_in_img_seq)});
+% user cancelled the dialog
+if isempty(AnswerOut)
+    return;
+end
+% check the index exceed the maximum
+if str2num(AnswerOut{:})<=last_ind_in_img_seq
+    last_ind_in_img_seq=str2num(AnswerOut{:});
+end
+
+time_interval=[first_ind_in_img_seq last_ind_in_img_seq];
+num_time_points=diff(time_interval)+1;
+
+% show first image and the grid, select point
+
+figure(2)
+clf
+img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
+imagesc(img_in);
+colormap('gray')
+hold on
+axis equal
+c=-1;
+while c~=1
+    [x, y, c]=ginput(1);
+    if c~=1
+        zoom;
+        pause;
+    end
+end
+
+x=round(x);
+y=round(y);
+
+AnswerOut = inputdlg([{'x'} {'y'}],'Window size',1,[{'200'} {'200'}]);
+if isempty(AnswerOut)
+    return;
+end
+s=[str2num(AnswerOut{1}) str2num(AnswerOut{2})];
+
+TopLeft=[x-floor(s(1)/2) y-floor(s(2)/2)];
+BottomRight=TopLeft+s-1;
+
+min_max_mean=zeros(num_time_points,6);
+max_x_span=s(1);
+max_y_span=s(2);
+box=zeros(num_time_points,4);
+
+img2=zeros([max_y_span max_x_span],'uint8');
+
+while 1
+    folder_out=uigetdir(pwd,'Image sequence save folder');
+    if folder_out~=0
+        break
+    end
+end
+folder_out(end+1)=filesep;
+
+for time=time_interval(1):time_interval(2)
+    t_ind=time-time_interval(1)+1;
+    img1=img2;
+    if time==time_interval(1)
+        box(t_ind,[1 3])=[x y]-[floor(max_x_span/2) floor(max_y_span/2)];
+        box(t_ind,[2 4])=box(t_ind,[1 3])+[max_x_span max_y_span]-1;
+        min_max_mean(t_ind,:)=[box(t_ind,1:2) box(t_ind,3:4) mean(box(t_ind,1:2)) mean(box(t_ind,3:4))];
+    else
+        box(t_ind,:)=box(t_ind-1,:);
+    end
+    
+    if box(t_ind,1)<1
+        box(t_ind,1:2)=box(t_ind,1:2)-box(t_ind,1)+1;
+    end
+    if box(t_ind,3)<1
+        box(t_ind,3:4)=box(t_ind,3:4)-box(t_ind,3)+1;
+    end
+    if box(t_ind,2)>size(img_in,2)
+        box(t_ind,1:2)=box(t_ind,1:2)-(box(t_ind,2)-size(img_in,2));
+    end    
+    if box(t_ind,4)>size(img_in,1)
+        box(t_ind,3:4)=box(t_ind,3:4)-(box(t_ind,4)-size(img_in,1));
+    end    
+    pixels=[{box(t_ind,3:4)} {box(t_ind,1:2)}];    
+    img2(:,:)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
+    if time==time_interval(1)
+        imwrite(img2,[folder_out 'img_' num2str(t_ind,'%.04d') '.tif']);
+        continue;
+    end
+
+    [~,~,u_filtered1,v_filtered1]=antti_PIVlab_vel_field1(img1,img2,[]);
+    displacement=round([mean(u_filtered1(:)) mean(v_filtered1(:))]);
+    box(t_ind,1:2)=box(t_ind,1:2)+displacement(1);
+    box(t_ind,3:4)=box(t_ind,3:4)+displacement(2);
+
+    if box(t_ind,1)<1
+        box(t_ind,1:2)=box(t_ind,1:2)-box(t_ind,1)+1;
+    end
+    if box(t_ind,3)<1
+        box(t_ind,3:4)=box(t_ind,3:4)-box(t_ind,3)+1;
+    end
+    if box(t_ind,2)>size(img_in,2)
+        box(t_ind,1:2)=box(t_ind,1:2)-(box(t_ind,2)-size(img_in,2));
+    end
+    if box(t_ind,4)>size(img_in,1)
+        box(t_ind,3:4)=box(t_ind,3:4)-(box(t_ind,4)-size(img_in,1));
+    end    
+    pixels=[{box(t_ind,3:4)} {box(t_ind,1:2)}];
+    min_max_mean(t_ind,:)=[box(t_ind,1:2) box(t_ind,3:4) mean(box(t_ind,1:2)) mean(box(t_ind,3:4))];
+    img2(:,:)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
+    imwrite(img2,[folder_out 'img_' num2str(t_ind,'%.04d') '.tif']);    
+end
+
+save([folder_out 'info.mat'],'min_max_mean', 'max_x_span', 'max_y_span', 'box', 'time_interval');
+
 end
 
 % --------------------------------------------------------------------
@@ -1672,7 +1801,7 @@ function exit_software_Callback(hObject, eventdata, handles)
 % hObject    handle to exit_software (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-close(1);
+close(handles.figure1);
 end
 
 % --------------------------------------------------------------------
@@ -1859,11 +1988,12 @@ img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
 
 % load from file
 if exist([fileparts(image_path) filesep 'info.mat'],'file')
-    load([fileparts(image_path) filesep 'info.mat']); % min_max_mean, max_x_span, max_y_span, box
+    load([fileparts(image_path) filesep 'info.mat']); % min_max_mean, max_x_span, max_y_span, box, time interval
     handles.min_max_mean=min_max_mean;
     handles.max_x_span=max_x_span;
     handles.max_y_span=max_y_span;
     handles.box=box;
+    handles.time_interval=handles.time_interval+time_interval(1)-1;
 
 % if not, write manually
 else
