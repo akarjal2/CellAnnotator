@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 04-Jan-2016 15:24:24
+% Last Modified by GUIDE v2.5 06-Jan-2016 10:36:42
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -708,23 +708,6 @@ handles.centroid_tracks_lines=draw_tracks(handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 handles.centroid_polygons=draw_polygons(handles);
 guidata(handles.figure1, handles);
-end
-
-% --- Executes on button press in pushbutton10.
-function pushbutton10_Callback(hObject, eventdata, handles1)
-% hObject    handle to pushbutton10 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-global param;
-handles1.slider2_value=get(handles1.slider2,'value');
-
-
-[filename, pathname, index]=uiputfile('*.mat');
-
-if index~=0
-    save([pathname filename],'handles1','param');    
-end
 end
 
 % --- Executes when user attempts to close figure1.
@@ -1554,16 +1537,149 @@ plot(non_smooth_curve_times(X_dis), disappearing_T1(X_dis),'oc',non_smooth_curve
 
 end
 
-% new data set
-% --- Executes on button press in pushbutton15.
-function pushbutton15_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton15 (see GCBO)
+% --- Executes on button press in checkbox10.
+function checkbox10_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox10 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% open grid file, keep asking, if cancelled
-% this can be replaced with better question
+% Hint: get(hObject,'Value') returns toggle state of checkbox10
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
+guidata(handles.figure1, handles);
+end
 
+
+% --- Executes on button press in checkbox11.
+function checkbox11_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox11 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox11
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
+guidata(handles.figure1, handles);
+end
+
+% a file menu item
+% --------------------------------------------------------------------
+function File_menu_Callback(hObject, eventdata, handles)
+% hObject    handle to File_menu (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+end
+
+% a file menu item
+% --------------------------------------------------------------------
+function new_data_set_Callback(hObject, eventdata, handles)
+% hObject    handle to new_data_set (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+end
+
+% --------------------------------------------------------------------
+function new_image_sequence_Callback(hObject, eventdata, handles)
+% hObject    handle to new_image_sequence (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+end
+
+% --------------------------------------------------------------------
+function load_data_set_Callback(hObject, eventdata, handles)
+% hObject    handle to load_data_set (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[filename, pathname, index]=uigetfile('*.mat');
+
+% return if user cancelled
+if index==0
+    return
+end
+
+load([pathname filename]);
+global param;
+
+handles.time_interval=handles1.time_interval;
+
+handles.min_max_mean=handles1.min_max_mean;
+handles.max_x_span=handles1.max_x_span;
+handles.max_y_span=handles1.max_y_span;
+handles.o_imgs=handles1.o_imgs;
+handles.s_imgs=handles1.s_imgs;
+handles.s_imgs_independent=handles1.s_imgs_independent;
+handles.box=handles1.box;
+handles.f_imgs=handles1.f_imgs;
+handles.time=handles1.time;
+handles.selection=handles1.selection;
+handles.centroid_scatter=[];
+handles.centroid_tracks_lines=[];
+handles.centroid_neighbour_lines=[];
+handles.centroid_polygons=[];
+handles.c_ind_max=handles1.c_ind_max;
+handles.c_map=handles1.c_map;
+handles.correspondence=handles1.correspondence;
+handles.slider2_value=round(handles1.slider2_value);
+handles.projected_points=handles1.projected_points;
+handles.projection_scatter=[];
+
+handles.inds_alive=handles1.inds_alive;    
+handles.labeled_independent_image=handles1.labeled_independent_image;    
+handles.cents=handles1.cents;    
+
+handles.cur_img=imagesc(handles.o_imgs(:,:,handles.slider2_value-handles.time_interval(1)+1),'parent',handles.axis1);    
+
+colormap(handles.axis1,'gray');
+hold(handles.axis1,'on');
+axis(handles.axis1,'off','equal');    
+
+handles.centroid_scatter=draw_selection(handles);
+handles.projection_scatter=draw_projection(handles);
+handles.centroid_tracks_lines=draw_tracks(handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
+
+guidata(hObject, handles);
+set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
+set(handles.text1,'string',num2str(handles.slider2_value));
+
+draw_image(handles);
+set(handles.cur_img,'ButtonDownFcn',@position_and_button);
+end
+
+% --------------------------------------------------------------------
+function save_data_set_Callback(hObject, eventdata, handles1)
+% hObject    handle to save_data_set (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global param;
+handles1.slider2_value=get(handles1.slider2,'value');
+
+
+[filename, pathname, index]=uiputfile('*.mat');
+
+if index~=0
+    save([pathname filename],'handles1','param');    
+end
+end
+
+% --------------------------------------------------------------------
+function exit_software_Callback(hObject, eventdata, handles)
+% hObject    handle to exit_software (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+close(1);
+end
+
+% --------------------------------------------------------------------
+function new_data_set_using_grid_Callback(hObject, eventdata, handles)
+% hObject    handle to new_data_set_using_grid (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 while 1
     [filename, pathname, ~]=uigetfile('*.mat','Open grid file');
     if filename~=0
@@ -1703,101 +1819,121 @@ axis(handles.axis1,'off','equal');
 set(handles.cur_img,'ButtonDownFcn',@position_and_button);
 set(handles.pushbutton12,'enable','off');
 guidata(hObject, handles);
-
 end
 
-% load data set
-% --- Executes on button press in pushbutton16.
-function pushbutton16_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton16 (see GCBO)
+% --------------------------------------------------------------------
+function new_data_set_using_cut_out_image_sequence_Callback(hObject, eventdata, handles)
+% hObject    handle to new_data_set_using_cut_out_image_sequence (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[filename, pathname, index]=uigetfile('*.mat');
+% find first image in image sequence    
+while 1
+    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
+    if filename~=0
+        break
+    end
+end        
+[~,name,~] = fileparts(filename);
+underscore_inds=strfind(name,'_');
 
-% return if user cancelled
-if index==0
-    return
+first_ind_in_img_seq=str2double(name(underscore_inds(end)+1:end));
+image_path=[pathname name(1:underscore_inds(end))];
+
+AllNames=dir([image_path '*']);
+last_ind_in_img_seq=length(AllNames);
+
+AnswerOut = inputdlg('Number of time points','Number of time points',1,{num2str(last_ind_in_img_seq)});
+% user cancelled the dialog
+if isempty(AnswerOut)
+    return;
+end
+% check the index exceed the maximum
+if str2num(AnswerOut{:})<=last_ind_in_img_seq
+    last_ind_in_img_seq=str2num(AnswerOut{:});
 end
 
-load([pathname filename]);
-global param;
+handles.time_interval=[first_ind_in_img_seq last_ind_in_img_seq];
 
-handles.time_interval=handles1.time_interval;
+img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
 
-handles.min_max_mean=handles1.min_max_mean;
-handles.max_x_span=handles1.max_x_span;
-handles.max_y_span=handles1.max_y_span;
-handles.o_imgs=handles1.o_imgs;
-handles.s_imgs=handles1.s_imgs;
-handles.s_imgs_independent=handles1.s_imgs_independent;
-handles.box=handles1.box;
-handles.f_imgs=handles1.f_imgs;
-handles.time=handles1.time;
-handles.selection=handles1.selection;
+% load from file
+if exist([fileparts(image_path) filesep 'info.mat'],'file')
+    load([fileparts(image_path) filesep 'info.mat']); % min_max_mean, max_x_span, max_y_span, box
+    handles.min_max_mean=min_max_mean;
+    handles.max_x_span=max_x_span;
+    handles.max_y_span=max_y_span;
+    handles.box=box;
+
+% if not, write manually
+else
+    sequence_length=diff(handles.time_interval)+1;
+    handles.max_x_span=size(img_in,2);
+    handles.max_y_span=size(img_in,1);
+    handles.min_max_mean=repmat([1 100 1 100 50 50],[sequence_length 1]); % these are arbitrary
+    handles.box=handles.min_max_mean(:,5)-round(handles.max_x_span/2);
+    handles.box(:,2)=handles.box(:,1)+handles.max_x_span-1;
+    handles.box(:,3)=handles.min_max_mean(:,6)-round(handles.max_y_span/2);
+    handles.box(:,4)=handles.box(:,3)+handles.max_y_span-1;
+end
+
+%%
+
+handles.o_imgs=zeros([handles.max_y_span handles.max_x_span handles.time_interval(2)-handles.time_interval(1)+1],'uint8');
+handles.s_imgs=zeros(size(handles.o_imgs),'uint8');
+handles.s_imgs_independent=zeros(size(handles.o_imgs),'uint8');   
+
+for time=handles.time_interval(1):handles.time_interval(2)
+    handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time,'%.04d') '.tif']);
+end
+
+handles.f_imgs=zeros(size(handles.o_imgs),'uint8');
+
+% check if filtered folder exists
+if exist([fileparts(image_path) '_filtered'],'dir')
+    for time=handles.time_interval(1):handles.time_interval(2)
+        handles.f_imgs(:,:,time-handles.time_interval(1)+1)=imread([fileparts(image_path) '_filtered' filesep 'img_' num2str(time,'%.04d') '.tif']);
+    end    
+else
+    imwrite(handles.o_imgs(:,:,1),'temp.tif');
+    for i_ind=2:size(handles.o_imgs,3)
+        imwrite(handles.o_imgs(:,:,i_ind),'temp.tif','writemode','append');
+    end
+    %     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm', 'Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\temp.tif','Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\filt_temp.tif');
+    antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
+    for i_ind=1:size(handles.o_imgs,3)
+        handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
+    end
+    delete temp.tif filt_temp.tif
+end
+
+handles.time=[];    
+handles.cur_img=imagesc(handles.o_imgs(:,:,1),'parent',handles.axis1);
+set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.time_interval(1),'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
+set(handles.text1,'string',num2str(handles.time_interval(1)));
+
+handles.selection=[];
 handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
 handles.centroid_polygons=[];
-handles.c_ind_max=handles1.c_ind_max;
-handles.c_map=handles1.c_map;
-handles.correspondence=handles1.correspondence;
-handles.slider2_value=round(handles1.slider2_value);
-handles.projected_points=handles1.projected_points;
+
+handles.c_ind_max=16;
+handles.c_map=jet(handles.c_ind_max);
+
+handles.correspondence=[];
+
+handles.inds_alive=[];
+handles.labeled_independent_image=[];
+handles.cents=[];
+
+handles.projected_points=[];
 handles.projection_scatter=[];
-
-handles.inds_alive=handles1.inds_alive;    
-handles.labeled_independent_image=handles1.labeled_independent_image;    
-handles.cents=handles1.cents;    
-
-handles.cur_img=imagesc(handles.o_imgs(:,:,handles.slider2_value-handles.time_interval(1)+1),'parent',handles.axis1);    
 
 colormap(handles.axis1,'gray');
 hold(handles.axis1,'on');
 axis(handles.axis1,'off','equal');    
-
-handles.centroid_scatter=draw_selection(handles);
-handles.projection_scatter=draw_projection(handles);
-handles.centroid_tracks_lines=draw_tracks(handles);
-handles.centroid_neighbour_lines=draw_neighbours(handles);
-handles.centroid_polygons=draw_polygons(handles);
-
-guidata(hObject, handles);
-set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
-set(handles.text1,'string',num2str(handles.slider2_value));
-
-draw_image(handles);
 set(handles.cur_img,'ButtonDownFcn',@position_and_button);
-
-
-end
-
-
-% --- Executes on button press in checkbox10.
-function checkbox10_Callback(hObject, eventdata, handles)
-% hObject    handle to checkbox10 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of checkbox10
-handles.centroid_tracks_lines=draw_tracks(handles);
-guidata(handles.figure1, handles);
-handles.centroid_neighbour_lines=draw_neighbours(handles);
-handles.centroid_polygons=draw_polygons(handles);
-guidata(handles.figure1, handles);
-end
-
-
-% --- Executes on button press in checkbox11.
-function checkbox11_Callback(hObject, eventdata, handles)
-% hObject    handle to checkbox11 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of checkbox11
-handles.centroid_tracks_lines=draw_tracks(handles);
-guidata(handles.figure1, handles);
-handles.centroid_neighbour_lines=draw_neighbours(handles);
-handles.centroid_polygons=draw_polygons(handles);
-guidata(handles.figure1, handles);
+set(handles.pushbutton12,'enable','off');
+guidata(hObject, handles);
 end
