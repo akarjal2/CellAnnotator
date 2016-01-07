@@ -1588,12 +1588,12 @@ function new_image_sequence_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-while 1
-    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
-    if filename~=0
-        break
-    end
-end        
+
+[filename, pathname, ~]=uigetfile('*.tif','Point first image from a time sequence');
+if filename==0
+    return
+end
+
 [~,name,~] = fileparts(filename);
 underscore_inds=strfind(name,'_');
 
@@ -1643,13 +1643,10 @@ if isempty(AnswerOut)
 end
 s=[str2num(AnswerOut{1}) str2num(AnswerOut{2})];
 
-TopLeft=[x-floor(s(1)/2) y-floor(s(2)/2)];
-BottomRight=TopLeft+s-1;
-
 min_max_mean=zeros(num_time_points,6);
 max_x_span=s(1);
 max_y_span=s(2);
-box=zeros(num_time_points,4);
+box_c=zeros(num_time_points,4);
 
 img2=zeros([max_y_span max_x_span],'uint8');
 
@@ -1665,26 +1662,26 @@ for time=time_interval(1):time_interval(2)
     t_ind=time-time_interval(1)+1;
     img1=img2;
     if time==time_interval(1)
-        box(t_ind,[1 3])=[x y]-[floor(max_x_span/2) floor(max_y_span/2)];
-        box(t_ind,[2 4])=box(t_ind,[1 3])+[max_x_span max_y_span]-1;
-        min_max_mean(t_ind,:)=[box(t_ind,1:2) box(t_ind,3:4) mean(box(t_ind,1:2)) mean(box(t_ind,3:4))];
+        box_c(t_ind,[1 3])=[x y]-[floor(max_x_span/2) floor(max_y_span/2)];
+        box_c(t_ind,[2 4])=box_c(t_ind,[1 3])+[max_x_span max_y_span]-1;
+        min_max_mean(t_ind,:)=[box_c(t_ind,1:2) box_c(t_ind,3:4) mean(box_c(t_ind,1:2)) mean(box_c(t_ind,3:4))];
     else
-        box(t_ind,:)=box(t_ind-1,:);
+        box_c(t_ind,:)=box_c(t_ind-1,:);
     end
     
-    if box(t_ind,1)<1
-        box(t_ind,1:2)=box(t_ind,1:2)-box(t_ind,1)+1;
+    if box_c(t_ind,1)<1
+        box_c(t_ind,1:2)=box_c(t_ind,1:2)-box_c(t_ind,1)+1;
     end
-    if box(t_ind,3)<1
-        box(t_ind,3:4)=box(t_ind,3:4)-box(t_ind,3)+1;
+    if box_c(t_ind,3)<1
+        box_c(t_ind,3:4)=box_c(t_ind,3:4)-box_c(t_ind,3)+1;
     end
-    if box(t_ind,2)>size(img_in,2)
-        box(t_ind,1:2)=box(t_ind,1:2)-(box(t_ind,2)-size(img_in,2));
+    if box_c(t_ind,2)>size(img_in,2)
+        box_c(t_ind,1:2)=box_c(t_ind,1:2)-(box_c(t_ind,2)-size(img_in,2));
     end    
-    if box(t_ind,4)>size(img_in,1)
-        box(t_ind,3:4)=box(t_ind,3:4)-(box(t_ind,4)-size(img_in,1));
+    if box_c(t_ind,4)>size(img_in,1)
+        box_c(t_ind,3:4)=box_c(t_ind,3:4)-(box_c(t_ind,4)-size(img_in,1));
     end    
-    pixels=[{box(t_ind,3:4)} {box(t_ind,1:2)}];    
+    pixels=[{box_c(t_ind,3:4)} {box_c(t_ind,1:2)}];    
     img2(:,:)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
     if time==time_interval(1)
         imwrite(img2,[folder_out 'img_' num2str(t_ind,'%.04d') '.tif']);
@@ -1693,29 +1690,34 @@ for time=time_interval(1):time_interval(2)
 
     [~,~,u_filtered1,v_filtered1]=antti_PIVlab_vel_field1(img1,img2,[]);
     displacement=round([mean(u_filtered1(:)) mean(v_filtered1(:))]);
-    box(t_ind,1:2)=box(t_ind,1:2)+displacement(1);
-    box(t_ind,3:4)=box(t_ind,3:4)+displacement(2);
+    box_c(t_ind,1:2)=box_c(t_ind,1:2)+displacement(1);
+    box_c(t_ind,3:4)=box_c(t_ind,3:4)+displacement(2);
 
-    if box(t_ind,1)<1
-        box(t_ind,1:2)=box(t_ind,1:2)-box(t_ind,1)+1;
+    if box_c(t_ind,1)<1
+        box_c(t_ind,1:2)=box_c(t_ind,1:2)-box_c(t_ind,1)+1;
     end
-    if box(t_ind,3)<1
-        box(t_ind,3:4)=box(t_ind,3:4)-box(t_ind,3)+1;
+    if box_c(t_ind,3)<1
+        box_c(t_ind,3:4)=box_c(t_ind,3:4)-box_c(t_ind,3)+1;
     end
-    if box(t_ind,2)>size(img_in,2)
-        box(t_ind,1:2)=box(t_ind,1:2)-(box(t_ind,2)-size(img_in,2));
+    if box_c(t_ind,2)>size(img_in,2)
+        box_c(t_ind,1:2)=box_c(t_ind,1:2)-(box_c(t_ind,2)-size(img_in,2));
     end
-    if box(t_ind,4)>size(img_in,1)
-        box(t_ind,3:4)=box(t_ind,3:4)-(box(t_ind,4)-size(img_in,1));
+    if box_c(t_ind,4)>size(img_in,1)
+        box_c(t_ind,3:4)=box_c(t_ind,3:4)-(box_c(t_ind,4)-size(img_in,1));
     end    
-    pixels=[{box(t_ind,3:4)} {box(t_ind,1:2)}];
-    min_max_mean(t_ind,:)=[box(t_ind,1:2) box(t_ind,3:4) mean(box(t_ind,1:2)) mean(box(t_ind,3:4))];
+    pixels=[{box_c(t_ind,3:4)} {box_c(t_ind,1:2)}];
+    min_max_mean(t_ind,:)=[box_c(t_ind,1:2) box_c(t_ind,3:4) mean(box_c(t_ind,1:2)) mean(box_c(t_ind,3:4))];
     img2(:,:)=imread([image_path num2str(time,'%.04d') '.tif'],'pixelregion',pixels);
     imwrite(img2,[folder_out 'img_' num2str(t_ind,'%.04d') '.tif']);    
 end
 
-save([folder_out 'info.mat'],'min_max_mean', 'max_x_span', 'max_y_span', 'box', 'time_interval');
+figure(2)
+hold on
+plot(min_max_mean(:,5),min_max_mean(:,6),'.-c')
+plot(min_max_mean(end,5),min_max_mean(end,6),'og','markersize',10);
+print([folder_out 'track.tif'],'-dtiff','-f2');
 
+save([folder_out 'info.mat'],'min_max_mean', 'max_x_span', 'max_y_span', 'box_c', 'time_interval');
 end
 
 % --------------------------------------------------------------------
@@ -1958,7 +1960,7 @@ function new_data_set_using_cut_out_image_sequence_Callback(hObject, eventdata, 
 
 % find first image in image sequence    
 while 1
-    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
+    [filename, pathname, ~]=uigetfile('*.tif','Point first frame of image sequence');
     if filename~=0
         break
     end
@@ -1988,11 +1990,11 @@ img_in=imread([image_path num2str(1+first_ind_in_img_seq-1,'%.04d') '.tif']);
 
 % load from file
 if exist([fileparts(image_path) filesep 'info.mat'],'file')
-    load([fileparts(image_path) filesep 'info.mat']); % min_max_mean, max_x_span, max_y_span, box, time interval
+    load([fileparts(image_path) filesep 'info.mat']); % min_max_mean, max_x_span, max_y_span, box_c, time interval
     handles.min_max_mean=min_max_mean;
     handles.max_x_span=max_x_span;
     handles.max_y_span=max_y_span;
-    handles.box=box;
+    handles.box=box_c;
     handles.time_interval=handles.time_interval+time_interval(1)-1;
 
 % if not, write manually
@@ -2013,16 +2015,16 @@ handles.o_imgs=zeros([handles.max_y_span handles.max_x_span handles.time_interva
 handles.s_imgs=zeros(size(handles.o_imgs),'uint8');
 handles.s_imgs_independent=zeros(size(handles.o_imgs),'uint8');   
 
-for time=handles.time_interval(1):handles.time_interval(2)
-    handles.o_imgs(:,:,time-handles.time_interval(1)+1)=imread([image_path num2str(time,'%.04d') '.tif']);
+for time=first_ind_in_img_seq:last_ind_in_img_seq    
+    handles.o_imgs(:,:,time-first_ind_in_img_seq+1)=imread([image_path num2str(time,'%.04d') '.tif']);
 end
 
 handles.f_imgs=zeros(size(handles.o_imgs),'uint8');
 
 % check if filtered folder exists
 if exist([fileparts(image_path) '_filtered'],'dir')
-    for time=handles.time_interval(1):handles.time_interval(2)
-        handles.f_imgs(:,:,time-handles.time_interval(1)+1)=imread([fileparts(image_path) '_filtered' filesep 'img_' num2str(time,'%.04d') '.tif']);
+    for time=first_ind_in_img_seq:last_ind_in_img_seq
+        handles.f_imgs(:,:,time-first_ind_in_img_seq+1)=imread([fileparts(image_path) '_filtered' filesep 'img_' num2str(time,'%.04d') '.tif']);
     end    
 else
     imwrite(handles.o_imgs(:,:,1),'temp.tif');
