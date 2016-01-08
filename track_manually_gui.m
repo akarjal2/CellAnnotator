@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 06-Jan-2016 15:33:21
+% Last Modified by GUIDE v2.5 08-Jan-2016 11:31:01
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -58,6 +58,10 @@ handles.output = hObject;
 
 set(handles.figure1,'WindowButtonD',[])
 
+if ~isfield(handles,'last_opened_path')
+    handles.last_opened_path=[];
+end
+
 guidata(hObject, handles);
 end
 
@@ -82,6 +86,17 @@ function slider2_Callback(hObject, eventdata, handles)
 % hObject    handle to slider2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+if ~isfield(handles,'running_slider2_callback')
+    handles.running_slider2_callback=0;
+end
+while handles.running_slider2_callback==1
+    handles=guidata(hObject);
+    pause(0.001);
+    disp('still running previous slider2 callback');
+end
+handles.running_slider2_callback=1;
+guidata(hObject, handles);
+
 global param
 
 % if get(handles.checkbox1,'value')==1
@@ -90,6 +105,7 @@ global param
 % else
 %     set(handles.cur_img,'CData',handles.o_imgs(:,:,round(get(handles.slider2,'Value'))-handles.time_interval(1)+1));    
 % end
+set(hObject,'value',round(get(hObject,'value')));
 
 draw_image(handles);
 
@@ -135,6 +151,8 @@ if get(handles.checkbox9,'value')==1
     
 %     print(handles.figure1,['.' filesep 'saving' filesep 'img_' num2str(round(get(handles.slider2,'value')),'%.03d') '.tif'],'-dtiff');
 end
+handles.running_slider2_callback=0;
+guidata(hObject, handles);
 end
 
 
@@ -265,13 +283,18 @@ if ~isempty(handles.selection)
             cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)+1-param.tracks(c_ind1).t(1)+1;
         
             temp_points=zeros(100,2);
-            for b_ind=1:length(param.tracks(c_ind1).bounds{cell_time_1})                
+            for b_ind=1:length(param.tracks(c_ind1).bounds{cell_time_1})
                 num_points_end=param.tracks(c_ind1).bounds{cell_time_1}{b_ind}(1,1);
                 b_points_end=double(param.tracks(c_ind1).bounds{cell_time_1}{b_ind}(2:(num_points_end+1),:));
                 if num_points_end==1
                     b_points_end(2,:)=b_points_end(1,:);
                     num_points_end=2;
                 end
+                
+                if num_points_end==0
+                    b_points_end(1:2,:)=double(param.tracks(c_ind1).bounds{cell_time_1}{1}(2:3,:));
+                    num_points_end=2;
+                end                
                 
                 distances=(repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
                     (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2;
@@ -726,10 +749,12 @@ switch choice
                 global param;
                 handles1.slider2_value=get(handles1.slider2,'value');
                 
-                [filename, pathname, index]=uiputfile('*.mat');
+                [filename, pathname, index]=uiputfile('*.mat','Save data set',handles1.last_opened_path);
                 
                 if index~=0
                     save([pathname filename],'handles1','param');
+                    handles1.last_opened_path=pathname;
+                    guidata(hObject, handles1);
                 end
         end
         delete(hObject);
@@ -1588,11 +1613,11 @@ function new_image_sequence_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-[filename, pathname, ~]=uigetfile('*.tif','Point first image from a time sequence');
+[filename, pathname, ~]=uigetfile('*.tif','Point first image from a time sequence',handles.last_opened_path);
 if filename==0
     return
 end
+handles.last_opened_path=pathname;
 
 [~,name,~] = fileparts(filename);
 underscore_inds=strfind(name,'_');
@@ -1651,7 +1676,8 @@ box_c=zeros(num_time_points,4);
 img2=zeros([max_y_span max_x_span],'uint8');
 
 while 1
-    folder_out=uigetdir(pwd,'Image sequence save folder');
+    folder_out=uigetdir(handles.last_opened_path,'Image sequence save folder');
+    handles.last_opened_path=pathname;    
     if folder_out~=0
         break
     end
@@ -1687,7 +1713,7 @@ for time=time_interval(1):time_interval(2)
         imwrite(img2,[folder_out 'img_' num2str(t_ind,'%.04d') '.tif']);
         continue;
     end
-
+    
     [~,~,u_filtered1,v_filtered1]=antti_PIVlab_vel_field1(img1,img2,[]);
     displacement=round([mean(u_filtered1(:)) mean(v_filtered1(:))]);
     box_c(t_ind,1:2)=box_c(t_ind,1:2)+displacement(1);
@@ -1712,12 +1738,14 @@ for time=time_interval(1):time_interval(2)
 end
 
 figure(2)
+zoom out
 hold on
 plot(min_max_mean(:,5),min_max_mean(:,6),'.-c')
 plot(min_max_mean(end,5),min_max_mean(end,6),'og','markersize',10);
 print([folder_out 'track.tif'],'-dtiff','-f2');
 
 save([folder_out 'info.mat'],'min_max_mean', 'max_x_span', 'max_y_span', 'box_c', 'time_interval');
+guidata(hObject, handles);
 end
 
 % --------------------------------------------------------------------
@@ -1725,7 +1753,8 @@ function load_data_set_Callback(hObject, eventdata, handles)
 % hObject    handle to load_data_set (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[filename, pathname, index]=uigetfile('*.mat');
+[filename, pathname, index]=uigetfile('*.mat','Select a data set',handles.last_opened_path);
+handles.last_opened_path=pathname;
 
 % return if user cancelled
 if index==0
@@ -1791,10 +1820,12 @@ global param;
 handles1.slider2_value=get(handles1.slider2,'value');
 
 
-[filename, pathname, index]=uiputfile('*.mat');
+[filename, pathname, index]=uiputfile('*.mat','Save data set',handles1.last_opened_path);
 
 if index~=0
     save([pathname filename],'handles1','param');    
+    handles1.last_opened_path=pathname;
+    guidata(hObject, handles1);    
 end
 end
 
@@ -1812,20 +1843,23 @@ function new_data_set_using_grid_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 while 1
-    [filename, pathname, ~]=uigetfile('*.mat','Open grid file');
+    [filename, pathname, ~]=uigetfile('*.mat','Open grid file',handles.last_opened_path);
     if filename~=0
         break
     end
 end
+handles.last_opened_path=pathname;
+
 load([pathname filename],'timeStructureX','timeStructureY');
 
 % find first image in image sequence    
 while 1
-    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence');
+    [filename, pathname, ~]=uigetfile('*.tif','Point first image from grid sequence',handles.last_opened_path);
     if filename~=0
         break
     end
-end        
+end      
+handles.last_opened_path=pathname;
 [~,name,~] = fileparts(filename);
 underscore_inds=strfind(name,'_');
 
@@ -1960,11 +1994,12 @@ function new_data_set_using_cut_out_image_sequence_Callback(hObject, eventdata, 
 
 % find first image in image sequence    
 while 1
-    [filename, pathname, ~]=uigetfile('*.tif','Point first frame of image sequence');
+    [filename, pathname, ~]=uigetfile('*.tif','Point first frame of image sequence',handles.last_opened_path);
     if filename~=0
         break
     end
 end        
+handles.last_opened_path=pathname;
 [~,name,~] = fileparts(filename);
 underscore_inds=strfind(name,'_');
 
@@ -2027,16 +2062,28 @@ if exist([fileparts(image_path) '_filtered'],'dir')
         handles.f_imgs(:,:,time-first_ind_in_img_seq+1)=imread([fileparts(image_path) '_filtered' filesep 'img_' num2str(time,'%.04d') '.tif']);
     end    
 else
-    imwrite(handles.o_imgs(:,:,1),'temp.tif');
+    if ~exist('C:\temp','dir');
+        mkdir('C:\temp','dir');
+    end
+    
+    imwrite(handles.o_imgs(:,:,1),'C:\temp\temp.tif');
     for i_ind=2:size(handles.o_imgs,3)
-        imwrite(handles.o_imgs(:,:,i_ind),'temp.tif','writemode','append');
+        imwrite(handles.o_imgs(:,:,i_ind),'C:\temp\temp.tif','writemode','append');
     end
-    %     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm', 'Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\temp.tif','Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\filt_temp.tif');
-    antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
+    if ~isfield(handles,'imagej_path')
+        [filename, pathname, ~]=uigetfile('*.exe','Point ImageJ executable',handles.last_opened_path);
+        if filename~=0
+            return
+        end        
+        handles.imagej_path=[pathname filename];
+    end
+    handles.last_opened_path=pathname;
+% %     evaluate_imagej_script([pwd filesep 'bandpass_filter_z-stack.ijm'],handles.imagej_path,'C:\temp\temp.tif','C:\temp\filt_temp.tif');
+    antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm','C:\temp\temp.tif','C:\temp\filt_temp.tif');    
     for i_ind=1:size(handles.o_imgs,3)
-        handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
+        handles.f_imgs(:,:,i_ind)=imread('C:\temp\filt_temp.tif','index',i_ind);
     end
-    delete temp.tif filt_temp.tif
+    delete C:\temp\temp.tif C:\temp\filt_temp.tif
 end
 
 handles.time=[];    
@@ -2068,4 +2115,25 @@ axis(handles.axis1,'off','equal');
 set(handles.cur_img,'ButtonDownFcn',@position_and_button);
 set(handles.pushbutton12,'enable','off');
 guidata(hObject, handles);
+end
+
+function evaluate_imagej_script(script_file,imagej_path,varargin)
+options='--no-splash -batch';
+
+args=[];
+%     if ~isempty(varargin)
+%         args=varargin{1};
+%     end
+l=length(varargin);
+if l>0
+    args='"';
+    for i=1:length(varargin)
+%         args=[args varargin{i} '\t'];
+        args=[args varargin{i} ' '];
+    end
+    args=[args '"'];
+end
+command=[imagej_path ' ' options ' ' script_file ' ' args];
+
+system(command);
 end
