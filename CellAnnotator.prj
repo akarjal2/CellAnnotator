@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration target="target.ezdeploy.standalone" target-name="MATLAB Compiler for Standalone Applications" name="CellAnnotator" location="Y:\Antti\programs\CellAnnotator" file="Y:\Antti\programs\CellAnnotator\CellAnnotator.prj" preferred-package-type="package.type.exe" build-checksum="3328857743" preferred-package-location="Y:\Antti\programs\CellAnnotator\CellAnnotator\for_redistribution">
+  <configuration target="target.ezdeploy.standalone" target-name="MATLAB Compiler for Standalone Applications" name="CellAnnotator" location="Y:\Antti\programs\CellAnnotator" file="Y:\Antti\programs\CellAnnotator\CellAnnotator.prj" preferred-package-type="package.type.exe" build-checksum="1983201519" preferred-package-location="Y:\Antti\programs\CellAnnotator\CellAnnotator\for_redistribution">
     <param.appname>CellAnnotator</param.appname>
     <param.authnamewatermark>Antti Karjalainen</param.authnamewatermark>
     <param.email>a.i.karjalainen@dundee.ac.uk</param.email>
@@ -10,7 +10,7 @@
     <param.summary />
     <param.description />
     <param.screenshot />
-    <param.version>1.0</param.version>
+    <param.version>1.1</param.version>
     <param.namespace>CellAnnotator</param.namespace>
     <param.guid />
     <param.installpath.string>\CellAnnotator\</param.installpath.string>
@@ -53,7 +53,6 @@
       <param.summary />
       <param.description />
       <param.screenshot />
-      <param.version />
       <param.namespace />
       <param.guid />
       <param.installpath.string />
@@ -137,6 +136,7 @@
       <file>Y:\Antti\programs\misc\antti_minfilt2.m</file>
       <file>Y:\Antti\programs\misc\antti_piv_FFTmulti.m</file>
       <file>Y:\Antti\programs\misc\antti_vanherk.m</file>
+      <file>Y:\Antti\programs\tracking_and_analysis_library\antti_PIVlab_vel_field1.m</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>

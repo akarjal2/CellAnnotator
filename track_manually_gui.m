@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 08-Jan-2016 11:31:01
+% Last Modified by GUIDE v2.5 08-Feb-2016 16:11:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -127,6 +127,7 @@ if ~isempty(handles.selection)
     handles.centroid_tracks_lines=draw_tracks(handles);
     handles.centroid_neighbour_lines=draw_neighbours(handles);
     handles.centroid_polygons=draw_polygons(handles);
+    handles.intercalation_lines=draw_intercalations(handles);
         
     guidata(hObject, handles);
 end
@@ -275,12 +276,21 @@ if ~isempty(handles.selection)
     if get(handles.checkbox11,'value')==1
         polygons_x=zeros(10,100);
         polygons_y=zeros(10,100);
+        area_now=zeros(1,100);
+        area_next=zeros(1,100);
+        
         n_ind=1;        
         
         all_cell_inds=handles.selection(s_inds,3)';
         for c_ind1_index=1:length(all_cell_inds)
             c_ind1=all_cell_inds(c_ind1_index);
             cell_time_1=get(handles.slider2,'value')-handles.time_interval(1)+1-param.tracks(c_ind1).t(1)+1;
+            area_now(n_ind)=double(param.tracks(c_ind1).A(cell_time_1));
+            if cell_time_1<length(param.tracks(c_ind1).t)
+                area_next(n_ind)=double(param.tracks(c_ind1).A(cell_time_1+1));
+            else
+                area_next(n_ind)=-1;
+            end
         
             temp_points=zeros(100,2);
             for b_ind=1:length(param.tracks(c_ind1).bounds{cell_time_1})
@@ -331,6 +341,8 @@ if ~isempty(handles.selection)
         end
         polygons_x(:,n_ind:end)=[];
         polygons_y(:,n_ind:end)=[];
+        area_now(n_ind:end)=[];
+        area_next(n_ind:end)=[];
         
         for n_ind=1:size(polygons_x,2)
             polygons_x(polygons_x(:,n_ind)==0,n_ind)=polygons_x(find(polygons_x(:,n_ind),1,'last'),n_ind);
@@ -339,7 +351,38 @@ if ~isempty(handles.selection)
                 
         polygon_coordinates=fill(polygons_x,polygons_y,[1 0 1]);
         
-        colours_to_use=param.track_c_map(param.c_map_inds(handles.selection(s_inds,3)),:);        
+% % cell colour
+%         colours_to_use=param.track_c_map(param.c_map_inds(handles.selection(s_inds,3)),:);    
+
+% absolute area with threshold
+%         num_colours=65;
+%         c_map=cool(num_colours);        
+%         area_thres=[100 600];
+%         area_to_use=area_now;
+%         area_to_use(area_to_use<area_thres(1))=area_thres(1);
+%         area_to_use(area_to_use>area_thres(2))=area_thres(2);        
+%         area_to_use=floor(round(area_to_use-area_thres(1))/(area_thres(2)-area_thres(1)+1)*num_colours)+1;        
+%         colours_to_use=c_map(area_to_use,:);
+
+% % proportional area change with threshold
+        num_colours=65;
+        c_map=cool(num_colours);      
+        c_map((33-3):(33+3),:)=1;
+
+%         c_map=autumn(num_colours);      
+        
+%         c_map=bone(num_colours);              
+        
+        c_map(1,:)=[0 0 0];
+        area_thres=[-0.2 0.2];        
+        area_to_use=(area_next-area_now)./area_now;
+        area_to_use(area_to_use<area_thres(1))=area_thres(1);
+        area_to_use(area_to_use>area_thres(2))=area_thres(2);        
+        area_to_use=floor((area_to_use-area_thres(1))/(area_thres(2)-area_thres(1))*(num_colours-1))+1;
+        area_to_use(area_to_use==1)=2;
+        area_to_use(area_next==-1)=1;        
+        colours_to_use=c_map(area_to_use,:);        
+        
         for f_ind=1:length(polygon_coordinates)
             set(polygon_coordinates(f_ind),'Facecolor',colours_to_use(f_ind,:))
         end
@@ -388,6 +431,43 @@ if isempty(eventdata.Modifier)
                 set(handles.slider2,'value',get(handles.slider2,'value')-1);            
             end
             slider2_Callback(handles.slider2,[],handles);        
+        case 'i'            
+            [x,y,c]=ginput(4);
+            cell_coords=double(handles.cents{round(get(handles.slider2,'value'))-handles.time_interval(1)+1}(:,1:2));
+            if sum(c==1)==4
+                intercalations=zeros(1,5);
+                for i_ind=1:4
+                    [~,m_ind]=min((cell_coords(:,1)-x(i_ind)).^2+(cell_coords(:,2)-y(i_ind)).^2);
+                    candidate=handles.cents{round(get(handles.slider2,'Value'))-handles.time_interval(1)+1}(m_ind,:);
+                    intercalations(i_ind)=candidate(3);
+                end
+                intercalations(5)=candidate(4);
+                intercalations(1:2)=sort(intercalations(1:2));
+                intercalations(3:4)=sort(intercalations(3:4));
+                                
+                if ~isfield(handles,'intercalations')
+                    handles.intercalations=zeros(0,5);
+                end
+
+% check if selected intercalation is to be removed
+                m_ind=find(sum(handles.intercalations(:,1:4)==repmat(intercalations(1:4),[size(handles.intercalations,1) 1]),2)==4 & abs(handles.intercalations(:,5)-repmat(intercalations(5),[size(handles.intercalations,1) 1]))<=2);
+                if ~isempty(m_ind)                    
+                    handles.intercalations(m_ind,:)=[];
+% otherwise add new interclation set
+                else
+                    handles.intercalations(end+1,:)=intercalations;
+                end   
+                
+                handles.centroid_tracks_lines=draw_tracks(handles);
+                guidata(handles.figure1, handles);
+                handles.centroid_neighbour_lines=draw_neighbours(handles);
+                handles.centroid_polygons=draw_polygons(handles);
+                handles.intercalation_lines=draw_intercalations(handles);
+                guidata(handles.figure1, handles);
+                
+                guidata(hObject, handles);
+            end
+
     end
 elseif strcmp(eventdata.Modifier{1},'alt')
     switch eventdata.Key
@@ -580,6 +660,7 @@ if ~isempty(handles.time) & handles.time>=round((get(handles.slider2,'value')-ha
         handles.centroid_tracks_lines=draw_tracks(handles);
         handles.centroid_neighbour_lines=draw_neighbours(handles);
         handles.centroid_polygons=draw_polygons(handles);
+        handles.intercalation_lines=draw_intercalations(handles);
     end
 elseif ~isempty(handles.time) & handles.time==round((get(handles.slider2,'value')-handles.time_interval(1)+1)) & get(handles.checkbox7,'value')==1 & handles.time~=1
     
@@ -730,6 +811,7 @@ handles.centroid_tracks_lines=draw_tracks(handles);
 % guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 handles.centroid_polygons=draw_polygons(handles);
+handles.intercalation_lines=draw_intercalations(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1105,7 +1187,11 @@ bw_mask(sub2ind(fliplr(param.img_s),double(projected_points(:,3)),double(project
 
 %%
 for c_ind=1:size(projected_points,1) 
-    projected_points(c_ind,5)=max(1,floor(sqrt(double(param.tracks(c_ind).A(end)/pi))*0.4));
+    if ~isempty(param.tracks(c_ind).A)
+        projected_points(c_ind,5)=max(1,floor(sqrt(double(param.tracks(c_ind).A(end)/pi))*0.4));
+    else
+        projected_points(c_ind,5)=max(1,floor(sqrt(double(param.tracks(param.tracks(c_ind).birth).A(end)/2/pi))*0.4));
+    end
 end
 for d_ind=2:max(projected_points(:,5))
     projected_points(projected_points(:,5)<d_ind,:)=[];
@@ -1573,6 +1659,7 @@ handles.centroid_tracks_lines=draw_tracks(handles);
 guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 handles.centroid_polygons=draw_polygons(handles);
+handles.intercalation_lines=draw_intercalations(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1588,6 +1675,7 @@ handles.centroid_tracks_lines=draw_tracks(handles);
 guidata(handles.figure1, handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 handles.centroid_polygons=draw_polygons(handles);
+handles.intercalation_lines=draw_intercalations(handles);
 guidata(handles.figure1, handles);
 end
 
@@ -1780,6 +1868,7 @@ handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
 handles.centroid_polygons=[];
+handles.intercalation_lines=[];
 handles.c_ind_max=handles1.c_ind_max;
 handles.c_map=handles1.c_map;
 handles.correspondence=handles1.correspondence;
@@ -1802,6 +1891,7 @@ handles.projection_scatter=draw_projection(handles);
 handles.centroid_tracks_lines=draw_tracks(handles);
 handles.centroid_neighbour_lines=draw_neighbours(handles);
 handles.centroid_polygons=draw_polygons(handles);
+handles.intercalation_lines=draw_intercalations(handles);
 
 guidata(hObject, handles);
 set(handles.slider2,'Min',handles.time_interval(1),'Max',handles.time_interval(2),'Value',handles.slider2_value,'SliderStep',[1/(handles.time_interval(2)-handles.time_interval(1)) 10/(handles.time_interval(2)-handles.time_interval(1))]);
@@ -1965,6 +2055,7 @@ handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
 handles.centroid_polygons=[];
+handles.intercalation_lines=[];
 
 handles.c_ind_max=16;
 handles.c_map=jet(handles.c_ind_max);
@@ -2096,6 +2187,7 @@ handles.centroid_scatter=[];
 handles.centroid_tracks_lines=[];
 handles.centroid_neighbour_lines=[];
 handles.centroid_polygons=[];
+handles.intercalation_lines=[];
 
 handles.c_ind_max=16;
 handles.c_map=jet(handles.c_ind_max);
@@ -2137,3 +2229,110 @@ command=[imagej_path ' ' options ' ' script_file ' ' args];
 
 system(command);
 end
+
+
+% --- Executes on button press in view_intercalations_checkbox.
+function view_intercalations_checkbox_Callback(hObject, eventdata, handles)
+% hObject    handle to view_intercalations_checkbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of view_intercalations_checkbox
+
+handles.centroid_tracks_lines=draw_tracks(handles);
+guidata(handles.figure1, handles);
+handles.centroid_neighbour_lines=draw_neighbours(handles);
+handles.centroid_polygons=draw_polygons(handles);
+handles.intercalation_lines=draw_intercalations(handles);
+guidata(handles.figure1, handles);
+
+end
+
+
+
+function line_handles=draw_intercalations(handles)
+global param
+try 
+    delete(handles.intercalation_lines);
+catch
+end
+line_handles=[];
+
+if ~isfield(handles,'intercalations')
+    handles.intercalations=[];
+    guidata(handles.figure1, handles);
+end
+
+if isempty(handles.intercalations)
+    return
+end
+
+if get(handles.view_intercalations_checkbox,'value')==1
+    
+    line_coords_x=zeros(2,size(handles.intercalations,1)*2);
+    line_coords_y=zeros(2,size(handles.intercalations,1)*2);
+    l_ind=1;
+    
+    for i_ind=1:size(handles.intercalations,1)
+        current_time=double(get(handles.slider2,'value')-handles.time_interval(1)+1);
+        if abs(current_time-handles.intercalations(i_ind,5))>3
+            continue;
+        end
+        ok=1;
+        for c_ind=1:4             
+            cell_ind=handles.intercalations(i_ind,c_ind);
+            cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+            if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
+                ok=0;
+                continue;
+            end            
+            line_coords_x((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,1));
+            line_coords_y((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,2));
+        end
+        if ok
+            l_ind=l_ind+2;
+        end
+    end
+    
+    line_coords_x(:,l_ind:end)=[];
+    line_coords_y(:,l_ind:end)=[];
+
+    line_handles=line(line_coords_x,line_coords_y);
+
+    colours_to_use=[1 0 0;0 1 1];
+    
+    for f_ind=1:size(line_coords_x,2)
+        set(line_handles(f_ind),'color',colours_to_use(mod(f_ind,2)+1,:));
+    end
+
+    set(line_handles,'hittest','off');
+end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
