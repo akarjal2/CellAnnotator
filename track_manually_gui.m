@@ -22,7 +22,7 @@ function varargout = track_manually_gui(varargin)
 
 % Edit the above text to modify the response to help track_manually_gui
 
-% Last Modified by GUIDE v2.5 11-Feb-2016 14:00:38
+% Last Modified by GUIDE v2.5 25-Sep-2016 13:34:16
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -858,7 +858,8 @@ switch choice
                 [filename, pathname, index]=uiputfile('*.mat','Save data set',handles1.last_opened_path);
                 
                 if index~=0
-                    save([pathname filename],'handles1','param');
+%                     save([pathname filename],'handles1','param');
+                    save_output_file([pathname filename],handles1);
                     handles1.last_opened_path=pathname;
                     guidata(hObject, handles1);
                 end
@@ -1943,8 +1944,9 @@ handles1.slider2_value=get(handles1.slider2,'value');
 
 [filename, pathname, index]=uiputfile('*.mat','Save data set',handles1.last_opened_path);
 
-if index~=0
-    save([pathname filename],'handles1','param');    
+if index~=0    
+%     save([pathname filename],'handles1','param');   
+    save_output_file([pathname filename],handles1);
     handles1.last_opened_path=pathname;
     guidata(hObject, handles1);    
 end
@@ -2427,275 +2429,275 @@ set(line_handles,'hittest','off');
     
 end
 
-% % function line_handles=draw_intercalations(handles)
-% % global param
-% % try 
-% %     delete(handles.intercalation_lines);
-% % catch
-% % end
-% % line_handles=[];
-% % 
-% % if ~isfield(handles,'intercalations')
-% %     handles.intercalations=[];
-% %     guidata(handles.figure1, handles);
-% % end
-% % 
-% % if isempty(handles.intercalations)
-% %     return;
-% % end
-% % 
-% % if get(handles.view_intercalations_checkbox,'value')==0
-% %     return;
-% % end
-% % 
-% % % line_coords_x=zeros(2,size(handles.intercalations,1)*2);
-% % % line_coords_y=zeros(2,size(handles.intercalations,1)*2);
-% % % l_ind=1;
-% % 
-% % neighs=zeros(100,5); % [cell time n_ind length length_next]
-% % neighs_ind=1;
-% % 
-% % for i_ind=1:size(handles.intercalations,1)
-% %     current_time=double(get(handles.slider2,'value')-handles.time_interval(1)+1);
-% %     if abs(current_time-handles.intercalations(i_ind,5))>10
-% %         continue;
-% %     end
-% %     ok=1;
-% %     for c_ind=[1 3]
-% %         cell_ind=handles.intercalations(i_ind,c_ind);
-% %         cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+function line_handles=draw_intercalations2(handles)
+global param
+try 
+    delete(handles.intercalation_lines);
+catch
+end
+line_handles=[];
+
+if ~isfield(handles,'intercalations')
+    handles.intercalations=[];
+    guidata(handles.figure1, handles);
+end
+
+if isempty(handles.intercalations)
+    return;
+end
+
+if get(handles.view_intercalations_checkbox,'value')==0
+    return;
+end
+
+% line_coords_x=zeros(2,size(handles.intercalations,1)*2);
+% line_coords_y=zeros(2,size(handles.intercalations,1)*2);
+% l_ind=1;
+
+neighs=zeros(100,5); % [cell time n_ind length length_next]
+neighs_ind=1;
+
+for i_ind=1:size(handles.intercalations,1)
+    current_time=double(get(handles.slider2,'value')-handles.time_interval(1)+1);
+    if abs(current_time-handles.intercalations(i_ind,5))>10
+        continue;
+    end
+    ok=1;
+    for c_ind=[1 3]
+        cell_ind=handles.intercalations(i_ind,c_ind);
+        cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+        if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
+            ok=0;
+            continue;
+        end
+%         line_coords_x((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,1));
+%         line_coords_y((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,2));
+
+% find neighbours           
+        
+        for c_ind2=(c_ind+1)
+            cell_ind2=handles.intercalations(i_ind,c_ind2);
+            cell_time2=current_time-double(param.tracks(cell_ind2).t(1))+1;
+            if cell_time2<=length(param.tracks(cell_ind2).t) | cell_time2>=1
+                n_inds=param.tracks(cell_ind).neighs{cell_time}==cell_ind2;
+                if sum(n_inds)>0
+                    n_ind=find(n_inds);
+                    coords=param.tracks(cell_ind).bounds{cell_time}{n_ind};
+                    num_points_end=coords(1,1);
+                    b_points_end=double(coords(2:(num_points_end+1),:));
+                    
+%                     distances=sqrt((repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
+%                         (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2);                    
+%                     
+%                     if isempty(distances)
+%                         distances=3;
+%                     end
+                    distances=c_ind;
+
+% find next length
+                    distances_next=-1;
+                    if (cell_time+1)<=length(param.tracks(cell_ind).t)
+                        n_inds_next=param.tracks(cell_ind).neighs{cell_time+1}==cell_ind2;                        
+                        if sum(n_inds_next)>0
+                            n_ind_next=find(n_inds_next);
+                            coords=param.tracks(cell_ind).bounds{cell_time+1}{n_ind_next};
+                            num_points_end=coords(1,1);
+                            b_points_end=double(coords(2:(num_points_end+1),:));
+
+                            distances_next=sqrt((repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
+                                (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2);                        
+                            if isempty(distances_next)
+                                distances_next=3;
+                            end
+                        end
+                    end                    
+                    
+                    neighs(neighs_ind,:)=[cell_ind cell_time n_ind max(distances(:)) max(distances_next(:))];
+                    neighs_ind=neighs_ind+1;
+                    
+                end
+            end
+        end
+
+    end
+%     if ok
+%         l_ind=l_ind+2;
+%     end
+end
+
+neighs(neighs_ind:end,:)=[];
+
+% line_coords_x(:,l_ind:end)=[];
+% line_coords_y(:,l_ind:end)=[];
+% 
+% line_handles=line(line_coords_x,line_coords_y);
+% 
+% colours_to_use=[1 0 0;0 1 1];
+% 
+% for f_ind=1:size(line_coords_x,2)
+%     set(line_handles(f_ind),'color',colours_to_use(mod(f_ind,2)+1,:));
+% end
+
+line_handles=zeros(0,1);
+
+num_lines=size(line_handles,1);
+line_handles((num_lines+1):(num_lines+size(neighs,1)))=0;
+
+%% length changes
+
+c_map=[1 0 0;0 1 1];
+
+colours_to_use=c_map(double(neighs(:,4)==3)+1,:);
+
+for i_ind=1:size(neighs,1)        
+    coords=param.tracks(neighs(i_ind,1)).bounds{neighs(i_ind,2)}{neighs(i_ind,3)}(2:end,:);
+%     line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.g');
+    line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.','color',colours_to_use(i_ind,:));
+end
+
+set(line_handles,'hittest','off');
+    
+end
+
+function line_handles=draw_intercalations3(handles)
+global param
+
+if isfield(handles,'intercalation_lines') & ishandle(handles.intercalation_lines)
+    delete(handles.intercalation_lines);
+end
+
+line_handles=[];
+
+if ~isfield(handles,'intercalations')
+    handles.intercalations=[];
+    guidata(handles.figure1, handles);
+end
+
+if isempty(handles.intercalations)
+    return;
+end
+
+if get(handles.view_intercalations_checkbox,'value')==0
+    return;
+end
+
+line_coords_x=zeros(2,size(handles.intercalations,1)*2);
+line_coords_y=zeros(2,size(handles.intercalations,1)*2);
+l_ind=1;
+
+% neighs=zeros(100,5); % [cell time n_ind length length_next]
+% neighs_ind=1;
+
+for i_ind=1:size(handles.intercalations,1)
+    current_time=double(get(handles.slider2,'value')-handles.time_interval(1)+1);
+%     if current_time<handles.intercalations(i_ind,5)
+%         continue;
+%     end
+    ok=1;
+    for c_ind=1:4
+        cell_ind=handles.intercalations(i_ind,c_ind);
+        cell_time=handles.intercalations(i_ind,5)-double(param.tracks(cell_ind).t(1))+1;
+%         cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+        
 % %         if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
 % %             ok=0;
 % %             continue;
-% %         end
-% % %         line_coords_x((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,1));
-% % %         line_coords_y((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,2));
-% % 
-% % % find neighbours           
-% %         
-% %         for c_ind2=(c_ind+1)
-% %             cell_ind2=handles.intercalations(i_ind,c_ind2);
-% %             cell_time2=current_time-double(param.tracks(cell_ind2).t(1))+1;
-% %             if cell_time2<=length(param.tracks(cell_ind2).t) | cell_time2>=1
-% %                 n_inds=param.tracks(cell_ind).neighs{cell_time}==cell_ind2;
-% %                 if sum(n_inds)>0
-% %                     n_ind=find(n_inds);
-% %                     coords=param.tracks(cell_ind).bounds{cell_time}{n_ind};
-% %                     num_points_end=coords(1,1);
-% %                     b_points_end=double(coords(2:(num_points_end+1),:));
-% %                     
-% % %                     distances=sqrt((repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
-% % %                         (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2);                    
-% % %                     
-% % %                     if isempty(distances)
-% % %                         distances=3;
-% % %                     end
-% %                     distances=c_ind;
-% % 
-% % % find next length
-% %                     distances_next=-1;
-% %                     if (cell_time+1)<=length(param.tracks(cell_ind).t)
-% %                         n_inds_next=param.tracks(cell_ind).neighs{cell_time+1}==cell_ind2;                        
-% %                         if sum(n_inds_next)>0
-% %                             n_ind_next=find(n_inds_next);
-% %                             coords=param.tracks(cell_ind).bounds{cell_time+1}{n_ind_next};
-% %                             num_points_end=coords(1,1);
-% %                             b_points_end=double(coords(2:(num_points_end+1),:));
-% % 
-% %                             distances_next=sqrt((repmat(b_points_end(:,1),[1 num_points_end])-repmat(b_points_end(:,1)',[num_points_end 1])).^2+...
-% %                                 (repmat(b_points_end(:,2),[1 num_points_end])-repmat(b_points_end(:,2)',[num_points_end 1])).^2);                        
-% %                             if isempty(distances_next)
-% %                                 distances_next=3;
-% %                             end
-% %                         end
-% %                     end                    
-% %                     
-% %                     neighs(neighs_ind,:)=[cell_ind cell_time n_ind max(distances(:)) max(distances_next(:))];
-% %                     neighs_ind=neighs_ind+1;
-% %                     
-% %                 end
-% %             end
-% %         end
-% % 
-% %     end
-% % %     if ok
-% % %         l_ind=l_ind+2;
-% % %     end
-% % end
-% % 
-% % neighs(neighs_ind:end,:)=[];
-% % 
-% % % line_coords_x(:,l_ind:end)=[];
-% % % line_coords_y(:,l_ind:end)=[];
-% % % 
-% % % line_handles=line(line_coords_x,line_coords_y);
-% % % 
-% % % colours_to_use=[1 0 0;0 1 1];
-% % % 
-% % % for f_ind=1:size(line_coords_x,2)
-% % %     set(line_handles(f_ind),'color',colours_to_use(mod(f_ind,2)+1,:));
-% % % end
-% % 
-% % line_handles=zeros(0,1);
-% % 
+% %         end        
+        
+        cell_time_o=cell_time;
+        cell_ind_o=cell_ind;
+
+        if cell_time>length(param.tracks(cell_ind_o).t)
+            if param.tracks(cell_ind_o).daughters(1)>0
+                cell_ind=param.tracks(cell_ind).daughters(1);
+                if isempty(param.tracks(cell_ind).t)
+                    ok=0;
+                    continue;                            
+                end
+                cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+                if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
+                    ok=0;
+                    continue;        
+                end                                        
+            else
+                ok=0;
+                continue;
+            end
+        elseif cell_time_o<1
+            if param.tracks(cell_ind_o).birth>0
+                cell_ind=param.tracks(cell_ind_o).birth;
+                if isempty(param.tracks(cell_ind).t)
+                    ok=0;
+                    continue;                            
+                end                
+                cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
+                if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
+                    ok=0;
+                    continue;
+                end
+            else
+                ok=0;
+                continue;
+            end
+        end
+
+        line_coords_x((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,1));
+        line_coords_y((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,2));
+
+    end
+    if ok
+        l_ind=l_ind+2;
+    end
+end
+
+line_coords_x(:,l_ind:end)=[];
+line_coords_y(:,l_ind:end)=[];
+
+line_handles=line(line_coords_x,line_coords_y);
+
+colours_to_use=[1 0 0;0 1 1];
+
+for f_ind=1:size(line_coords_x,2)
+    set(line_handles(f_ind),'color',colours_to_use(mod(f_ind,2)+1,:));
+end
+
+% delete(line_handles(2:2:end));
+% line_handles(2:2:end)=[];
+% 
+% delete(line_handles(1:2:end));
+% line_handles(1:2:end)=[];
+
+
 % % num_lines=size(line_handles,1);
 % % line_handles((num_lines+1):(num_lines+size(neighs,1)))=0;
 % % 
 % % %% length changes
 % % 
-% % c_map=[1 0 0;0 1 1];
+% % num_colours=65;
+% % c_half=floor(num_colours/2);
+% % c_map=zeros(num_colours,3);
+% % c_map((c_half+1):end,1)=linspace(0,1,c_half+1);
+% % c_map(1:(c_half+1),2)=linspace(1,0,c_half+1);
+% % c_map(1,:)=[1 1 1];
 % % 
-% % colours_to_use=c_map(double(neighs(:,4)==3)+1,:);
+% % length_thres=[-0.2 0.2];
+% % length_to_use=(neighs(:,5)-neighs(:,4))./neighs(:,4);
+% % length_to_use(length_to_use<length_thres(1))=length_thres(1);
+% % length_to_use(length_to_use>length_thres(2))=length_thres(2);        
+% % length_to_use=floor((length_to_use-length_thres(1))/(length_thres(2)-length_thres(1))*(num_colours-1))+1;
+% % length_to_use(length_to_use==1)=2;
+% % length_to_use(neighs(:,5)==-1)=1;
+% % colours_to_use=c_map(length_to_use,:);
 % % 
 % % for i_ind=1:size(neighs,1)        
 % %     coords=param.tracks(neighs(i_ind,1)).bounds{neighs(i_ind,2)}{neighs(i_ind,3)}(2:end,:);
 % % %     line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.g');
 % %     line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.','color',colours_to_use(i_ind,:));
 % % end
-% % 
-% % set(line_handles,'hittest','off');
-% %     
-% % end
 
-% % function line_handles=draw_intercalations(handles)
-% % global param
-% % 
-% % if isfield(handles,'intercalation_lines') & ishandle(handles.intercalation_lines)
-% %     delete(handles.intercalation_lines);
-% % end
-% % 
-% % line_handles=[];
-% % 
-% % if ~isfield(handles,'intercalations')
-% %     handles.intercalations=[];
-% %     guidata(handles.figure1, handles);
-% % end
-% % 
-% % if isempty(handles.intercalations)
-% %     return;
-% % end
-% % 
-% % if get(handles.view_intercalations_checkbox,'value')==0
-% %     return;
-% % end
-% % 
-% % line_coords_x=zeros(2,size(handles.intercalations,1)*2);
-% % line_coords_y=zeros(2,size(handles.intercalations,1)*2);
-% % l_ind=1;
-% % 
-% % % neighs=zeros(100,5); % [cell time n_ind length length_next]
-% % % neighs_ind=1;
-% % 
-% % for i_ind=1:size(handles.intercalations,1)
-% %     current_time=double(get(handles.slider2,'value')-handles.time_interval(1)+1);
-% % %     if current_time<handles.intercalations(i_ind,5)
-% % %         continue;
-% % %     end
-% %     ok=1;
-% %     for c_ind=1:4
-% %         cell_ind=handles.intercalations(i_ind,c_ind);
-% %         cell_time=handles.intercalations(i_ind,5)-double(param.tracks(cell_ind).t(1))+1;
-% % %         cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
-% %         
-% % % %         if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
-% % % %             ok=0;
-% % % %             continue;
-% % % %         end        
-% %         
-% %         cell_time_o=cell_time;
-% %         cell_ind_o=cell_ind;
-% % 
-% %         if cell_time>length(param.tracks(cell_ind_o).t)
-% %             if param.tracks(cell_ind_o).daughters(1)>0
-% %                 cell_ind=param.tracks(cell_ind).daughters(1);
-% %                 if isempty(param.tracks(cell_ind).t)
-% %                     ok=0;
-% %                     continue;                            
-% %                 end
-% %                 cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
-% %                 if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
-% %                     ok=0;
-% %                     continue;        
-% %                 end                                        
-% %             else
-% %                 ok=0;
-% %                 continue;
-% %             end
-% %         elseif cell_time_o<1
-% %             if param.tracks(cell_ind_o).birth>0
-% %                 cell_ind=param.tracks(cell_ind_o).birth;
-% %                 if isempty(param.tracks(cell_ind).t)
-% %                     ok=0;
-% %                     continue;                            
-% %                 end                
-% %                 cell_time=current_time-double(param.tracks(cell_ind).t(1))+1;
-% %                 if cell_time>length(param.tracks(cell_ind).t) | cell_time<1
-% %                     ok=0;
-% %                     continue;
-% %                 end
-% %             else
-% %                 ok=0;
-% %                 continue;
-% %             end
-% %         end
-% % 
-% %         line_coords_x((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,1));
-% %         line_coords_y((l_ind-1)*2+c_ind)=double(param.tracks(cell_ind).cent(cell_time,2));
-% % 
-% %     end
-% %     if ok
-% %         l_ind=l_ind+2;
-% %     end
-% % end
-% % 
-% % line_coords_x(:,l_ind:end)=[];
-% % line_coords_y(:,l_ind:end)=[];
-% % 
-% % line_handles=line(line_coords_x,line_coords_y);
-% % 
-% % colours_to_use=[1 0 0;0 1 1];
-% % 
-% % for f_ind=1:size(line_coords_x,2)
-% %     set(line_handles(f_ind),'color',colours_to_use(mod(f_ind,2)+1,:));
-% % end
-% % 
-% % % delete(line_handles(2:2:end));
-% % % line_handles(2:2:end)=[];
-% % % 
-% % % delete(line_handles(1:2:end));
-% % % line_handles(1:2:end)=[];
-% % 
-% % 
-% % % % num_lines=size(line_handles,1);
-% % % % line_handles((num_lines+1):(num_lines+size(neighs,1)))=0;
-% % % % 
-% % % % %% length changes
-% % % % 
-% % % % num_colours=65;
-% % % % c_half=floor(num_colours/2);
-% % % % c_map=zeros(num_colours,3);
-% % % % c_map((c_half+1):end,1)=linspace(0,1,c_half+1);
-% % % % c_map(1:(c_half+1),2)=linspace(1,0,c_half+1);
-% % % % c_map(1,:)=[1 1 1];
-% % % % 
-% % % % length_thres=[-0.2 0.2];
-% % % % length_to_use=(neighs(:,5)-neighs(:,4))./neighs(:,4);
-% % % % length_to_use(length_to_use<length_thres(1))=length_thres(1);
-% % % % length_to_use(length_to_use>length_thres(2))=length_thres(2);        
-% % % % length_to_use=floor((length_to_use-length_thres(1))/(length_thres(2)-length_thres(1))*(num_colours-1))+1;
-% % % % length_to_use(length_to_use==1)=2;
-% % % % length_to_use(neighs(:,5)==-1)=1;
-% % % % colours_to_use=c_map(length_to_use,:);
-% % % % 
-% % % % for i_ind=1:size(neighs,1)        
-% % % %     coords=param.tracks(neighs(i_ind,1)).bounds{neighs(i_ind,2)}{neighs(i_ind,3)}(2:end,:);
-% % % % %     line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.g');
-% % % %     line_handles(num_lines+i_ind)=plot(coords(:,1),coords(:,2),'.','color',colours_to_use(i_ind,:));
-% % % % end
-% % 
-% % set(line_handles,'hittest','off');
-% %     
-% % end
+set(line_handles,'hittest','off');
+    
+end
 
 
 % --------------------------------------------------------------------
@@ -2722,6 +2724,345 @@ end
 set(handles.checkbox9,'value',saving_checkbox_state);
 
 end
+
+% --- Executes on button press in find_intercalations.
+function find_intercalations_Callback(hObject, eventdata, handles)
+global param
+% hObject    handle to find_intercalations (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% handles.intercalations might not exist in older files.
+if ~isfield(handles,'intercalations')
+    handles.intercalations=[];
+    guidata(handles.figure1, handles);
+end
+
+% Check if user wants to reset all intercalations.
+if ~isempty(handles.intercalations)
+    choice = questdlg('Reset current?','Intercalations','Yes','Cancel','Cancel');
+    if strcmp(choice,'Cancel')
+        return;
+    end
+    handles.intercalations=[];
+end
+
+appearing=zeros(0,3); % [id1 id2 time]
+disappearing=zeros(0,3); % [id1 id2 time]    
+
+% 0 if not exists, otherwise length+1, max 255
+
+for c_ind1=1:size(handles.selection,1)
+    cell_i1=handles.selection(c_ind1,3);    
+    cell_i1_temp=cell_i1;
+
+    for c_ind2=1:size(handles.selection,1)
+        cell_i1=cell_i1_temp;
+        length_of_edge=zeros(length(handles.cents),1); % [cell_id_selection cell_id time]                        
+        cell_i2=handles.selection(c_ind2,3);     
+        cell_i2_temp=cell_i2;
+        if cell_i2>=cell_i1
+            continue;
+        end
+
+%%
+        for time=1:length(length_of_edge)
+            t_ind1=param.tracks(cell_i1).t==time;
+            t_ind2=param.tracks(cell_i2).t==time;
+            if sum(t_ind1)>0 & sum(t_ind2)>0        
+                n_ind=param.tracks(cell_i1).neighs{t_ind1}==cell_i2;
+                if sum(n_ind)>0
+                    length_of_edge(time)=size(param.tracks(cell_i1).bounds{t_ind1}{n_ind},1)-1+1;
+                else
+                    length_of_edge(time)=1;
+                end
+            end
+        end
+
+        original_length=length_of_edge;
+
+        last_common_t=find(length_of_edge(1:(end-1))>0 & length_of_edge(2:(end))==0);
+        for time=(last_common_t+1):min(handles.time,last_common_t+15)
+
+            if length(cell_i1)==1 & param.tracks(cell_i1).t(end)==(time-1) & param.tracks(cell_i1).daughters(1)>0
+                cell_i1=param.tracks(cell_i1).daughters;
+            end
+            if length(cell_i2)==1 & param.tracks(cell_i2).t(end)==(time-1) & param.tracks(cell_i2).daughters(1)>0
+                cell_i2=param.tracks(cell_i2).daughters;
+            end    
+
+            t_ind1=[];
+            t_ind2=[];
+
+            l=ones(2)*nan;
+
+            for i_ind=1:length(cell_i1)
+                ind=find(param.tracks(cell_i1(i_ind)).t==time);        
+                if isempty(ind)
+                    t_ind1(i_ind)=0;
+                else
+                    t_ind1(i_ind)=ind;
+                end
+            end
+
+            for i_ind=1:length(cell_i2)
+                ind=find(param.tracks(cell_i2(i_ind)).t==time);
+                if isempty(ind)
+                    t_ind2(i_ind)=0;
+                else
+                    t_ind2(i_ind)=ind;
+                end
+            end    
+
+            for i_ind=find(t_ind1)
+                for j_ind=find(t_ind2)
+                    n_ind=param.tracks(cell_i1(i_ind)).neighs{t_ind1(i_ind)}==cell_i2(j_ind);
+                    if sum(n_ind)>0
+                        l(i_ind,j_ind)=size(param.tracks(cell_i1(i_ind)).bounds{t_ind1(i_ind)}{n_ind},1)-1+1;
+                    else
+                        l(i_ind,j_ind)=1;
+                    end            
+                end        
+            end    
+
+            length_of_edge(time)=max(l(:));
+            if isnan(length_of_edge(time))
+                length_of_edge(time)=0;
+            end
+        end
+
+        cell_i1=cell_i1_temp;
+        cell_i2=cell_i2_temp;
+        first_common_t=find(length_of_edge(1:(end-1))==0 & length_of_edge(2:(end))>0);
+        for time=(first_common_t):-1:max(1,first_common_t-14)
+
+            if param.tracks(cell_i1).t(1)==(time+1) & param.tracks(cell_i1).birth>0
+                cell_i1=param.tracks(cell_i1).birth;
+            end
+            if param.tracks(cell_i2).t(1)==(time+1) & param.tracks(cell_i2).birth>0
+                cell_i2=param.tracks(cell_i2).birth;
+            end
+
+            t_ind1=[];
+            t_ind2=[];
+
+            l=ones(2)*nan;
+
+            for i_ind=1:length(cell_i1)
+                ind=find(param.tracks(cell_i1(i_ind)).t==time);        
+                if isempty(ind)
+                    t_ind1(i_ind)=0;
+                else
+                    t_ind1(i_ind)=ind;
+                end
+            end
+
+            for i_ind=1:length(cell_i2)
+                ind=find(param.tracks(cell_i2(i_ind)).t==time);
+                if isempty(ind)
+                    t_ind2(i_ind)=0;
+                else
+                    t_ind2(i_ind)=ind;
+                end
+            end    
+
+            for i_ind=find(t_ind1)
+                for j_ind=find(t_ind2)
+                    n_ind=param.tracks(cell_i1(i_ind)).neighs{t_ind1(i_ind)}==cell_i2(j_ind);
+                    if sum(n_ind)>0
+                        l(i_ind,j_ind)=size(param.tracks(cell_i1(i_ind)).bounds{t_ind1(i_ind)}{n_ind},1)-1+1;
+                    else
+                        l(i_ind,j_ind)=1;
+                    end            
+                end        
+            end
+
+            length_of_edge(time)=max(l(:));
+            if isnan(length_of_edge(time))
+                length_of_edge(time)=0;
+            end    
+        end
+
+        non_smooth_curve=double(length_of_edge);
+
+        n=18;
+
+        non_smooth_curve_mod=antti_medfilt3(non_smooth_curve,[n 1]);
+
+        non_smooth_curve_mod(non_smooth_curve_mod==1)=-1;
+        non_smooth_curve_mod(non_smooth_curve==0)=nan;
+        non_smooth_curve_mod(non_smooth_curve_mod>1)=1;
+
+
+        disappearing_T1=conv(non_smooth_curve_mod,[-ones(n/2,1); ones(n/2,1)]/n*22,'same');
+
+        disappearing_T1(1:(n/2))=nan;
+        disappearing_T1((end-n/2+1):end)=nan;
+
+        [vals, X_app]=findpeaks(-disappearing_T1);
+        X_app(vals<2)=[];
+
+        for i_ind=1:(size(X_app,1)*size(X_app,2))
+            lens=[X_app(i_ind):(X_app(i_ind)+5) (X_app(i_ind)-1):-1:(X_app(i_ind)-5)]';
+            lens(lens<1 | lens>length(handles.cents))=[];
+            lens(:,2)=original_length(lens);    
+            ind_to_use=find(lens(:,2)>=1,1,'first');
+
+            if isempty(ind_to_use)                    
+                disp('no match')
+                disp([cell_i1_temp cell_i2_temp X_app(i_ind)])
+                continue;
+            end
+            appearing((end+1),1:5)=[cell_i1_temp cell_i2_temp X_app(i_ind) 0 0];
+
+            appearing(end,4)=lens(ind_to_use,1);
+            t_ind1=param.tracks(appearing(end,1)).t==appearing(end,4);
+            t_ind2=param.tracks(appearing(end,2)).t==appearing(end,4);
+            appearing(end,5)=atan2(double(param.tracks(appearing(end,1)).cent(t_ind1,2))-double(param.tracks(appearing(end,2)).cent(t_ind2,2)),...
+                double(param.tracks(appearing(end,1)).cent(t_ind1,1))-double(param.tracks(appearing(end,2)).cent(t_ind2,1)));                
+        end            
+        [vals, X_dis]=findpeaks(disappearing_T1);
+        X_dis(vals<2)=[];
+
+        for i_ind=1:(size(X_dis,1)*size(X_dis,2))
+            lens=[(X_dis(i_ind)):-1:(X_dis(i_ind)-5) (X_dis(i_ind)+1):(X_dis(i_ind)+5)]';    
+            lens(lens<1 | lens>length(handles.cents))=[];                
+            lens(:,2)=original_length(lens);    
+            ind_to_use=find(lens(:,2)>=1,1,'first');
+
+            if isempty(ind_to_use)                    
+                disp('no match')
+                disp([cell_i1_temp cell_i2_temp X_dis(i_ind)])
+                continue;
+            end
+            disappearing((end+1),1:5)=[cell_i1_temp cell_i2_temp X_dis(i_ind) 0 0];
+
+            disappearing(end,4)=lens(ind_to_use,1);
+            t_ind1=param.tracks(disappearing(end,1)).t==disappearing(end,4);
+            t_ind2=param.tracks(disappearing(end,2)).t==disappearing(end,4);
+            disappearing(end,5)=atan2(double(param.tracks(disappearing(end,1)).cent(t_ind1,2))-double(param.tracks(disappearing(end,2)).cent(t_ind2,2)),...
+                double(param.tracks(disappearing(end,1)).cent(t_ind1,1))-double(param.tracks(disappearing(end,2)).cent(t_ind2,1)));
+        end            
+    end
+end
+
+rm_inds=[];
+for i_ind=1:size(appearing,1)    
+    if param.tracks(appearing(i_ind,1)).birth>0 & param.tracks(appearing(i_ind,1)).birth==param.tracks(appearing(i_ind,2)).birth & param.tracks(appearing(i_ind,2)).t(1)>(appearing(i_ind,4)-5) 
+        rm_inds(end+1)=i_ind;            
+    end
+end
+
+appearing(rm_inds,:)=[];
+
+%% Combine appearing and disappearing into intercalations.
+
+appearing(:,1:2)=sort(appearing(:,1:2),2);
+disappearing(:,1:2)=sort(disappearing(:,1:2),2);
+
+intercalations=[];
+
+for i_ind=1:size(disappearing)
+    cell_i1=disappearing(i_ind,1);
+    cell_i2=disappearing(i_ind,2);
+
+    if sum(handles.selection(:,3)==cell_i1)<1 | sum(handles.selection(:,3)==cell_i2)<1
+        continue
+    end
+
+    t_cell_1=disappearing(i_ind,4)-double(param.tracks(cell_i1).t(1))+1;
+    t_cell_2=disappearing(i_ind,4)-double(param.tracks(cell_i2).t(1))+1;
+
+    neigh_cells=intersect(param.tracks(cell_i1).neighs{t_cell_1},param.tracks(cell_i2).neighs{t_cell_2});
+    neigh_cells(neigh_cells==0)=[];
+
+    if length(neigh_cells)~=2
+        disp(neigh_cells)
+        continue
+    end    
+
+    if sum(handles.selection(:,3)==neigh_cells(1))<1 | sum(handles.selection(:,3)==neigh_cells(2))<1
+        continue
+    end
+
+    intercalations(end+1,:)=[cell_i1 cell_i2 neigh_cells disappearing(i_ind,4)];
+
+    match=find(appearing(:,1)==neigh_cells(1) & appearing(:,2)==neigh_cells(2));
+    if ~isempty(match) & appearing(match,3)>=(disappearing(i_ind,4)-2) & appearing(match,3)<=(disappearing(i_ind,4)+2)
+        appearing(match,:)=[];
+    end
+end
+
+for i_ind=1:size(appearing)
+    cell_i1=appearing(i_ind,1);
+    cell_i2=appearing(i_ind,2);
+
+    if sum(handles.selection(:,3)==cell_i1)<1 | sum(handles.selection(:,3)==cell_i2)<1
+        continue
+    end
+
+    t_cell_1=appearing(i_ind,4)-double(param.tracks(cell_i1).t(1))+1;
+    t_cell_2=appearing(i_ind,4)-double(param.tracks(cell_i2).t(1))+1;
+
+    neigh_cells=intersect(param.tracks(cell_i1).neighs{t_cell_1},param.tracks(cell_i2).neighs{t_cell_2});
+    neigh_cells(neigh_cells==0)=[];
+
+    if length(neigh_cells)~=2
+        disp(neigh_cells)
+        continue
+    end
+
+    if sum(handles.selection(:,3)==neigh_cells(1))<1 | sum(handles.selection(:,3)==neigh_cells(2))<1
+        continue
+    end
+
+    intercalations(end+1,:)=[neigh_cells cell_i1 cell_i2 appearing(i_ind,4)];
+
+end
+
+handles.intercalations=intercalations(:,[3 4 1 2 5]);
+
+% Update handles with new intercalation data.
+guidata(handles.figure1, handles);
+% Wipe intercalations away from overlay picture.
+view_intercalations_checkbox_Callback(hObject, eventdata, handles);
+end
+
+function save_output_file(file_path,handles)
+global param;
+
+handles1=[];
+
+handles1.time_interval=handles.time_interval;
+
+handles1.min_max_mean=handles.min_max_mean;
+handles1.max_x_span=handles.max_x_span;
+handles1.max_y_span=handles.max_y_span;
+handles1.o_imgs=handles.o_imgs;
+handles1.s_imgs=handles.s_imgs;
+handles1.s_imgs_independent=handles.s_imgs_independent;
+handles1.box=handles.box;
+handles1.f_imgs=handles.f_imgs;
+handles1.time=handles.time;
+handles1.selection=handles.selection;
+handles1.c_ind_max=handles.c_ind_max;
+handles1.c_map=handles.c_map;
+handles1.correspondence=handles.correspondence;
+handles1.slider2_value=round(handles.slider2_value);
+handles1.projected_points=handles.projected_points;
+try
+    handles1.intercalations=handles.intercalations;
+catch
+    handles1.intercalations=[];
+end
+
+handles1.inds_alive=handles.inds_alive;    
+handles1.labeled_independent_image=handles.labeled_independent_image;    
+handles1.cents=handles.cents;    
+
+save(file_path,'handles1','param');
+end
+
 
 
 
