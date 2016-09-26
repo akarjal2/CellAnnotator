@@ -146,6 +146,9 @@ if get(handles.checkbox9,'value')==1
     if isfield(handles,'folder_out')
         folder_out=handles.folder_out;
     end
+    if ~exist(folder_out,'dir')
+        mkdir(folder_out)
+    end
     imwrite(aa,[folder_out filesep 'img_' num2str(round(get(handles.slider2,'value')),'%.03d') '.tif']);
 end
 handles.running_slider2_callback=0;
@@ -469,7 +472,7 @@ if isempty(eventdata.Modifier)
                 intercalations(1:2)=sort(intercalations(1:2));
                 intercalations(3:4)=sort(intercalations(3:4));
                                 
-                if ~isfield(handles,'intercalations')
+                if ~isfield(handles,'intercalations') | size(handles.intercalations,2)==0
                     handles.intercalations=zeros(0,5);
                 end
 
@@ -2072,7 +2075,8 @@ for i_ind=2:size(handles.o_imgs,3)
     imwrite(handles.o_imgs(:,:,i_ind),'temp.tif','writemode','append');
 end
 %     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm', 'Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\temp.tif','Z:\mDrives\raid0\DSLM_WorkInProgress\Exp186\antti\0087_edit_time_independent_and_track\filt_temp.tif');
-antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
+% antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm',[pwd filesep 'temp.tif'],[pwd filesep 'filt_temp.tif']);
+evaluate_imagej_script([pwd filesep 'bandpass_filter_z-stack.ijm'],handles.imagej_path,'C:\temp\temp.tif','C:\temp\filt_temp.tif');
 for i_ind=1:size(handles.o_imgs,3)
     handles.f_imgs(:,:,i_ind)=imread('filt_temp.tif','index',i_ind);
 end
@@ -2202,8 +2206,8 @@ else
         handles.imagej_path=[pathname filename];
     end
     handles.last_opened_path=pathname;
-% %     evaluate_imagej_script([pwd filesep 'bandpass_filter_z-stack.ijm'],handles.imagej_path,'C:\temp\temp.tif','C:\temp\filt_temp.tif');
-    antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm','C:\temp\temp.tif','C:\temp\filt_temp.tif');    
+    evaluate_imagej_script([pwd filesep 'bandpass_filter_z-stack.ijm'],handles.imagej_path,'C:\temp\temp.tif','C:\temp\filt_temp.tif');
+% %     antti_evaluate_imagej_script_windows('Y:\Antti\programs\semi_automatic_tracker\bandpass_filter_z-stack.ijm','C:\temp\temp.tif','C:\temp\filt_temp.tif');
     for i_ind=1:size(handles.o_imgs,3)
         handles.f_imgs(:,:,i_ind)=imread('C:\temp\filt_temp.tif','index',i_ind);
     end
@@ -2887,7 +2891,8 @@ for c_ind1=1:size(handles.selection,1)
 
         n=18;
 
-        non_smooth_curve_mod=antti_medfilt3(non_smooth_curve,[n 1]);
+%         non_smooth_curve_mod=antti_medfilt3(non_smooth_curve,[n 1]);
+        non_smooth_curve_mod=medfilt2(non_smooth_curve,[n 1]);
 
         non_smooth_curve_mod(non_smooth_curve_mod==1)=-1;
         non_smooth_curve_mod(non_smooth_curve==0)=nan;
@@ -3020,7 +3025,11 @@ for i_ind=1:size(appearing)
 
 end
 
-handles.intercalations=intercalations(:,[3 4 1 2 5]);
+if ~isempty(intercalations)
+    handles.intercalations=intercalations(:,[3 4 1 2 5]);
+else
+    handles.intercalations=[];
+end
 
 % Update handles with new intercalation data.
 guidata(handles.figure1, handles);
